@@ -1,101 +1,83 @@
 // User Types
-export type UserRole = 'student' | 'teacher';
+export type UserType = 'student' | 'teacher' | 'reviewer';
 
 export interface User {
-  id: number;
-  username: string;
-  role: UserRole;
-}
-
-export interface Student extends User {
-  role: 'student';
-}
-
-export interface Teacher extends User {
-  role: 'teacher';
+  id: string;
+  name: string;
+  user_type: UserType;
 }
 
 // Task Types
-export type TaskDifficulty = 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
-export type QuestionType = 'writing' | 'kanji' | 'vocabulary' | 'translation' | 'essay';
-
-export interface Question {
-  id: number;
-  taskId: number;
-  questionText: string;
-  questionType: QuestionType;
-  hint?: string;
-  sampleAnswer?: string;
+export interface Task {
+  id: string;
+  question_id: string;
+  teacher_id: string;
+  deadline: string; // ISO datetime
 }
 
-export interface Task {
-  id: number;
-  title: string;
-  description?: string;
-  difficulty: TaskDifficulty;
-  dueDate?: string;
-  createdBy: number;
-  createdAt: string;
-  isDone: boolean;
-  questions: Question[];
+// Question Types
+export interface Question {
+  id: string;
+  question_text: string;
+  difficulty_level: string; // e.g. N2, N3
 }
 
 // Submission Types
-export type SubmissionStatus = 'draft' | 'submitted' | 'graded';
+export type SubmissionStatus = 0 | 1 | 2 | 3 | 4; // 0: draft, 1: submitted, 2: AI graded, 3: teacher graded, 4: reviewed
 
 export interface Submission {
-  id: number;
-  taskId: number;
-  studentId: number;
+  id: string;
+  task_id: string;
+  student_id: string;
   content: string;
+  ai_score?: number;
+  ai_feedback?: string;
+  teacher_score?: number;
+  teacher_feedback?: string;
+  submission_time?: string; // ISO datetime
   status: SubmissionStatus;
-  aiScore?: number;
-  teacherScore?: number;
-  aiFeedback?: string;
-  teacherFeedback?: string;
-  createdAt: string;
-  updatedAt: string;
-  task?: Task;
-  student?: Student;
 }
 
-// Feedback Types
-export interface DetailedAnalysis {
-  grammar?: {
-    score: number;
-    issues: string[];
-    suggestions: string[];
-  };
-  vocabulary?: {
-    score: number;
-    strengths: string[];
-    improvements: string[];
-  };
-  structure?: {
-    score: number;
-    comments: string[];
-  };
-  fluency?: {
-    score: number;
-    feedback: string;
-  };
-  content?: {
-    score: number;
-    feedback: string;
-  };
+// API Response Types
+export interface ApiResponse<T> {
+  data?: T;
+  error?: string;
 }
 
-export interface PracticeExercise {
-  title: string;
-  description: string;
-  example: string;
+// RAG API Types
+export interface RagFindQuestionRequest {
+  prompt: string;
+  difficulty: string;
 }
 
-export interface FeedbackData {
-  grade: string;
-  feedbackText: string;
-  actionPlan: string[];
-  practiceExercises: PracticeExercise[];
-  detailedAnalysis: DetailedAnalysis;
-  overallScore: number;
+export interface RagFindQuestionResponse {
+  question_id: string;
+}
+
+export interface RagGenerateQuestionRequest {
+  criteria: Record<string, any>; // flexible criteria object
+}
+
+export interface RagGenerateQuestionResponse {
+  candidates: Question[];
+}
+
+// Task Creation Request
+export interface CreateTaskRequest {
+  prompt: string;
+  difficulty: string;
+  deadline: string;
+  teacher_id: string;
+}
+
+// Submission Creation/Update
+export interface CreateSubmissionRequest {
+  task_id: string;
+  student_id: string;
+  content: string;
+}
+
+export interface UpdateSubmissionRequest {
+  teacher_score?: number;
+  teacher_feedback?: string;
 }

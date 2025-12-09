@@ -335,7 +335,7 @@
 
 ## Progress Tracking
 
-### Completed: 9 items
+### Completed: 14 items
 - ✅ Project setup
 - ✅ TypeScript configuration
 - ✅ TailwindCSS setup
@@ -345,10 +345,16 @@
 - ✅ Type definitions
 - ✅ Utility functions
 - ✅ Documentation
+- ✅ Updated types.ts to match new data model (User, Task, Question, Submission)
+- ✅ Updated mockData.ts with new data structure and reviewer role
+- ✅ Updated student/tasks page to use new data model and submission status
+- ✅ Updated student/writing-test/[id] page to handle submissions and status
+- ✅ Created Flask demo API with all required endpoints
+- ✅ Added Flask requirements.txt and README
 
 ### In Progress: 0 items
 
-### Total Remaining: ~100+ items
+### Total Remaining: ~95+ items
 
 ### Estimated Time
 - High Priority: 2-3 weeks
@@ -359,3 +365,4 @@
 ---
 
 **Last Updated**: December 4, 2024
+**Recent Updates**: Updated data model, created Flask demo API, modified student pages for new data structure

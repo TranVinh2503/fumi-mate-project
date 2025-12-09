@@ -1,0 +1,45 @@
+{
+  "info": {
+    "name": "Fumi-Mate API",
+    "description": "API for generating Japanese language tasks using Gemini AI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Generate Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"Japan\",\n  \"level\": \"beginner\",\n  \"numQuestions\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    }
+  ]
+}

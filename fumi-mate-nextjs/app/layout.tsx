@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Serif_Text, Zen_Maru_Gothic, Parisienne } from 'next/font/google';
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 import DynamicBar from '@/components/layout/DynamicBar';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -34,29 +35,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // TODO: Get authentication status and user info from context/session
-  const isAuthenticated = false; // Replace with actual auth check
-  const userRole: 'student' | 'teacher' = 'student'; // Replace with actual user role
-  const username = 'User'; // Replace with actual username
-
+export default function RootLayout({children,}: {children: React.ReactNode;}) {
   return (
     <html lang="en" className={`${dmSerif.variable} ${zenMaru.variable} ${parisienne.variable}`}>
       <body className="font-japanese">
-        <DynamicBar />
-        <Navbar 
-          isAuthenticated={isAuthenticated}
-          userRole={userRole}
-          username={username}
-        />
-        <main className="mt-[46px]">
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider>
+          <DynamicBar />
+          <Navbar/>
+          <main className="mt-[46px]">
+            {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

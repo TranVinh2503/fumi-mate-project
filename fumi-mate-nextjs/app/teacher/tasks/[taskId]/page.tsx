@@ -78,13 +78,13 @@ export default function TeacherTaskDetailPage() {
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Task Details</h1>
+            <h1 className="text-4xl font-title font-bold">Task Details</h1>
             <p className="text-gray-600">Task ID: {task.id}</p>
           </div>
         </div>
         <Link
           href={`/teacher/tasks/${task.id}/edit`}
-          className="inline-flex items-center gap-2 bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary transition-colors"
+          className="inline-flex items-center gap-2 bg-secondary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary transition-colors"
         >
           <Edit className="w-5 h-5" />
           Edit Task
@@ -92,7 +92,7 @@ export default function TeacherTaskDetailPage() {
       </div>
 
       {/* Task Information */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+      <div className="bg-white rounded-lg border-2 border-gray p-6 mb-8">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <FileText className="w-6 h-6 text-primary" />
           Task Information
@@ -148,7 +148,7 @@ export default function TeacherTaskDetailPage() {
       </div>
 
       {/* Submissions */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="bg-white rounded-lg p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Users className="w-6 h-6 text-primary" />
           Student Submissions ({submissions.length})
@@ -157,7 +157,7 @@ export default function TeacherTaskDetailPage() {
         {submissions.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100 border-b-2 border-primary">
+              <thead className="bg-gray-100 rounded-lg border-2 border-gray">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Student</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>

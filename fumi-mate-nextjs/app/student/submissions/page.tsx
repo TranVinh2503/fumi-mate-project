@@ -16,24 +16,25 @@ export default function StudentSubmissionsPage() {
     // const data = await response.json();
     // setSubmissions(data);
     
-    // Mock data - assuming current user is student with ID 1
-    const studentSubmissions = getSubmissionsByStudentId(1);
+    // Mock data - assuming current user is student with ID student1
+
+    const studentSubmissions = getSubmissionsByStudentId("student1");
     setSubmissions(studentSubmissions);
   }, []);
 
-  const handleRowClick = (submissionId: number) => {
+  const handleRowClick = (submissionId: string) => {
     router.push(`/student/submissions/${submissionId}`);
   };
 
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
-      <h2 className="text-4xl font-bold mb-8">My Submissions</h2>
+      <h2 className="text-4xl font-title font-bold mb-8">My Submissions</h2>
 
       {submissions.length > 0 ? (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100 border-b-2 border-primary">
+              <thead className="bg-gray-100 border-2">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Task</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
@@ -50,28 +51,31 @@ export default function StudentSubmissionsPage() {
                     className="clickable-row border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <td className="px-6 py-4 font-semibold">
-                      {sub.task?.title || '—'}
+                      {'—'}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.status === 'submitted' ? (
-                        <span className="badge badge-success">Submitted</span>
+                      {sub.status === 2 ? (
+                        <span className="badge badge-success">AI Graded</span>
+                      ) : sub.status === 3 ? (
+                        <span className="badge badge-info">Teacher Graded</span>
                       ) : (
                         <span className="badge badge-secondary">Draft</span>
                       )}
                     </td>
+
                     <td className="px-6 py-4 text-gray-600">
-                      {formatDateTime(sub.updatedAt)}
+                      {sub.submission_time}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.aiScore ? (
-                        <span className="font-semibold text-blue-600">{sub.aiScore}</span>
+                      {sub.ai_score ? (
+                        <span className="font-semibold text-blue-600">{sub.ai_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.teacherScore ? (
-                        <span className="font-semibold text-green-600">{sub.teacherScore}</span>
+                      {sub.teacher_score ? (
+                        <span className="font-semibold text-green-600">{sub.teacher_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
@@ -84,12 +88,7 @@ export default function StudentSubmissionsPage() {
         </div>
       ) : (
         <div className="text-center mt-12">
-          <img
-            src="/images/crying_girl.png"
-            alt="No submissions"
-            className="mx-auto mb-4"
-            style={{ width: '200px' }}
-          />
+          <img src="/images/crying_girl.png" alt="No submissions" className="mx-auto mb-4" style={{ width: '200px' }} />
           <p className="text-gray-500 text-lg">You haven't submitted any writing tests yet.</p>
         </div>
       )}

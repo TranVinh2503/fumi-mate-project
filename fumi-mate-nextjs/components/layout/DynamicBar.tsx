@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 const messages = [
-  "Welcome to 文メイト — Learn Japanese with fun 🌸",
+  "Welcome to Fumi Mate — Learn Japanese with fun 🌸",
   "Master kanji, grammar, and writing with AI 💫",
   "Join your teacher and improve every day 📖",
   "Learn Japanese beautifully — anytime, anywhere 🗾"

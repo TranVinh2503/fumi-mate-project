@@ -26,7 +26,8 @@ interface FeedbackData {
 }
 
 export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
-  const submissionId = parseInt(params.id);
+  const submissionId = params.id;
+  
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData>({});
 
@@ -39,8 +40,8 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
     const foundSubmission = getSubmissionById(submissionId);
     setSubmission(foundSubmission || null);
     
-    if (foundSubmission?.aiFeedback) {
-      const parsedFeedback = parseJSON<FeedbackData>(foundSubmission.aiFeedback, {});
+    if (foundSubmission?.ai_feedback) {
+      const parsedFeedback = parseJSON<FeedbackData>(foundSubmission.ai_feedback, {});
       setFeedback(parsedFeedback);
     }
   }, [submissionId]);
@@ -58,7 +59,9 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-4xl font-bold">
-            {submission.task?.title || 'Submission Detail'}
+            {/* {submission.task?.title ||'Submission Detail'} */}
+            {'Submission Detail'}
+
           </h2>
           <Link
             href="/student/submissions"
@@ -85,7 +88,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">AI Score</p>
               <p className="text-3xl font-bold text-blue-600">
-                {submission.aiScore || '—'}
+                {submission.ai_score || '—'}
               </p>
               {feedback.grade && (
                 <p className="text-lg text-gray-700 mt-2">Grade: {feedback.grade}</p>
@@ -94,7 +97,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
             <div className="p-4 bg-green-50 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">Teacher Score</p>
               <p className="text-3xl font-bold text-green-600">
-                {submission.teacherScore || '—'}
+                {submission.teacher_score || '—'}
               </p>
             </div>
           </div>
@@ -108,10 +111,10 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           )}
 
           {/* Teacher Feedback */}
-          {submission.teacherFeedback && (
+          {submission.teacher_feedback && (
             <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
               <h6 className="font-semibold text-lg mb-2">👨‍🏫 Teacher Feedback</h6>
-              <p className="text-gray-700 leading-relaxed">{submission.teacherFeedback}</p>
+              <p className="text-gray-700 leading-relaxed">{submission.teacher_feedback}</p>
             </div>
           )}
         </div>

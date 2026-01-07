@@ -28,7 +28,7 @@ interface FeedbackData {
 
 export default function TeacherGradeSubmissionPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const submissionId = parseInt(params.id);
+  const submissionId = params.id;
   
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [aiFeedback, setAiFeedback] = useState<FeedbackData>({});
@@ -46,11 +46,11 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
     setSubmission(foundSubmission || null);
     
     if (foundSubmission) {
-      setTeacherScore(foundSubmission.teacherScore?.toString() || '');
-      setTeacherFeedback(foundSubmission.teacherFeedback || '');
+      setTeacherScore(foundSubmission.teacher_score?.toString() || '');
+      setTeacherFeedback(foundSubmission.teacher_feedback || '');
       
-      if (foundSubmission.aiFeedback) {
-        const parsed = parseJSON<FeedbackData>(foundSubmission.aiFeedback, {});
+      if (foundSubmission.ai_feedback) {
+        const parsed = parseJSON<FeedbackData>(foundSubmission.ai_feedback, {});
         setAiFeedback(parsed);
       }
     }
@@ -116,19 +116,19 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Student</p>
+              <p className="text-sm text-gray-600">Student:</p>
               <p className="font-semibold text-lg">
-                {submission.student?.username || `Student ${submission.studentId}`}
+                {submission.student_id}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Task</p>
+              <p className="text-sm text-gray-600">Task:</p>
               <p className="font-semibold text-lg">{submission.task?.title || '—'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">AI Score</p>
+              <p className="text-sm text-gray-600">AI Score:</p>
               <p className="font-semibold text-lg text-blue-600">
-                {submission.aiScore || '—'}
+                {submission.ai_score || '—'}
               </p>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
               required
             />
             <p className="text-sm text-gray-500 mt-2">
-              AI suggested score: {submission.aiScore || 'N/A'}
+              AI suggested score: {submission.ai_score || 'N/A'}
             </p>
           </div>
 
@@ -201,16 +201,13 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
           </div>
 
           <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors btn-hover-scale"
-            >
+            <button type="submit"
+              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors">
               Submit Grade
             </button>
             <Link
               href="/teacher/submissions"
-              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center"
-            >
+              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center" >
               Cancel
             </Link>
           </div>

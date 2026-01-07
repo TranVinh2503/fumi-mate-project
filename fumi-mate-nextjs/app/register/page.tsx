@@ -1,64 +1,73 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from "next/link"
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirm: '',
-    role: 'student' as 'student' | 'teacher',
-  });
-  const [message, setMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (formData.password !== formData.confirm) {
-      setMessage('Passwords do not match');
-      return;
+export default function LoginPage() {
+  const router = useRouter()
+
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<"student" | "teacher" | "admin">("student")
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          role,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessage(data.message || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      // ✅ Save JWT
+      localStorage.setItem('access_token', data.access_token)
+
+      setMessage('Login successful!')
+      router.push('/') // hoặc dashboard
+
+    } catch (err) {
+      setMessage('Server error')
+    } finally {
+      setLoading(false)
     }
-    
-    if (formData.password.length < 6) {
-      setMessage('Password must be at least 6 characters');
-      return;
-    }
-    
-    // TODO: Implement actual registration API call
-    console.log('Registration attempt:', {
-      username: formData.username,
-      role: formData.role,
-    });
-    
-    setMessage('Registration successful! Redirecting to login...');
-    setTimeout(() => {
-      router.push('/login');
-    }, 1500);
-  };
+  }
 
   return (
-    <section className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-title font-bold text-center mb-8">Register</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <section className="min-h-screen flex items-start justify-center py-20">
+      <div className="max-w-md w-full bg-white">
+        <h2 className="text-3xl font-title font-bold text-start mb-8">Register</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
               Username
             </label>
             <input
-              type="text"
-              id="username"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="Username"
               className="custom-input"
-              placeholder="Enter your username"
               required
-              minLength={3}
             />
           </div>
 
@@ -68,52 +77,41 @@ export default function RegisterPage() {
             </label>
             <input
               type="password"
-              id="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="custom-input"
-              placeholder="Enter your password"
-              required
-              minLength={6}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirm" className="block text-sm font-semibold text-gray-700 mb-2">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirm"
-              value={formData.confirm}
-              onChange={(e) => setFormData({ ...formData, confirm: e.target.value })}
-              className="custom-input"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               placeholder="Confirm your password"
+              className="custom-input"
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="role" className="block text-sm font-semibold text-gray-700 mb-2">
-              Role
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                </svg>
-              </span>
-              <select
-                id="role"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'student' | 'teacher' })}
-                className="custom-select pl-10"
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-              </select>
-            </div>
-          </div>
+<div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    Role
+  </label>
+
+  <div className="flex gap-3">
+    {["student", "teacher", "admin"].map((r) => (
+      <button
+        key={r}
+        type="button"
+        onClick={() => setRole(r as typeof role)}
+        className={`
+          px-4 py-2 rounded-xl border text-sm font-medium transition
+          ${
+            role === r
+              ? "bg-secondary text-white border-secondary"
+              : "border-gray-300 text-gray-700 hover:border-secondary hover:text-secondary"
+          }
+          focus:outline-none
+        `}
+      >
+        {r.charAt(0).toUpperCase() + r.slice(1)}
+      </button>
+    ))}
+  </div>
+</div>
+
 
           {message && (
             <div className={`text-center p-3 rounded-lg ${

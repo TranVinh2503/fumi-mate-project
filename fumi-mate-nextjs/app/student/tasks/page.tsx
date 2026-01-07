@@ -2,50 +2,83 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getTasksForStudent, getSubmissionsForStudent, getQuestionById } from '@/lib/mockData';
-import { Task, Submission } from '@/lib/types';
+import { Submission } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+
+type Task = {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  dueDate: string | null;
+  createdAt: string | null;
+  isDone: boolean;
+  questions: {
+    id: number;
+    questionText: string;
+    questionType: string;
+    hint?: string;
+    sampleAnswer?: string;
+  }[];
+  teacherId?: string; // add if backend returns teacher info
+};
 
 export default function StudentTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [message, setMessage] = useState('');
-  const studentId = 'student1'; // TODO: Get from auth context
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // TODO: Fetch tasks from Flask API
-    // const response = await fetch(`/api/submissions?student_id=${studentId}`);
-    // const data = await response.json();
-    // setTasks(data.tasks);
-    // setSubmissions(data.submissions);
+    const token = localStorage.getItem('access_token');
+    console.log('TOKEN USED IN TASK PAGE:', token);
 
-    // Mock data for now
-    setTasks(getTasksForStudent(studentId));
-    setSubmissions(getSubmissionsForStudent(studentId));
-  }, [studentId]);
+    if (!token) {
+      setError('Not authenticated');
+      setLoading(false);
+      return;
+    }
 
-  const getTaskStatus = (taskId: string) => {
-    const submission = submissions.find(sub => sub.task_id === taskId);
-    if (!submission) return 'Not Started';
-    if (submission.status === 0) return 'Draft';
-    if (submission.status >= 1) return 'Submitted';
-    return 'Completed';
-  };
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/student/tasks', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-  const isTaskCompleted = (taskId: string) => {
-    const submission = submissions.find(sub => sub.task_id === taskId);
-    return submission && submission.status >= 3; // teacher graded
-  };
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.msg || 'Failed to fetch tasks');
+        }
+
+        const data = await res.json();
+        setTasks(data.tasks);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
-      <h2 className="text-4xl font-bold mb-8">Your Tasks</h2>
+      <h2 className="text-4xl font-title font-bold mb-8">Your Tasks</h2>
 
       {/* Flash messages */}
       {message && (
         <div className="alert alert-success mb-4">
           {message}
-          <button 
+          <button
             onClick={() => setMessage('')}
             className="float-right font-bold"
           >
@@ -57,23 +90,21 @@ export default function StudentTasksPage() {
       {tasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
           {tasks.map((task) => {
-            const question = getQuestionById(task.question_id);
-            const status = getTaskStatus(task.id);
-            const completed = isTaskCompleted(task.id);
+            const status = task.isDone ? 'Completed' : 'Not Started';
 
             return (
               <div key={task.id}>
-                {completed ? (
+                {task.isDone ? (
                   <div className="bg-red-100 border-2 border-gray-800 rounded-lg shadow-md p-6">
                     <h5 className="text-xl font-bold mb-2">
-                      {question?.question_text || 'Task'}
+                      {task.title || 'Task'}
                     </h5>
                     <p className="text-gray-600 text-sm mb-3">
-                      Difficulty: {question?.difficulty_level || 'N/A'}
+                      Difficulty: {task.difficulty || 'N/A'}
                     </p>
                     <div className="mb-2">
                       <span className="font-semibold">Due: </span>
-                      <span>{formatDate(task.deadline)}</span>
+                      <span>{task.dueDate ? formatDate(task.dueDate) : 'N/A'}</span>
                     </div>
                     <div className="mb-3">
                       <span className="font-semibold">Status: </span>
@@ -87,10 +118,10 @@ export default function StudentTasksPage() {
                   <div className="bg-white border-2 border-gray-800 rounded-lg shadow-md p-6 card-hover">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="text-xl font-bold">
-                        {question?.question_text || 'Task'}
+                        {task.title || 'Task'}
                       </h5>
                       <span className="badge badge-primary">
-                        {question?.difficulty_level || 'N/A'}
+                        {task.difficulty || 'N/A'}
                       </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-3">
@@ -98,11 +129,11 @@ export default function StudentTasksPage() {
                     </p>
                     <div className="mb-2">
                       <span className="font-semibold">Due: </span>
-                      <span>{formatDate(task.deadline)}</span>
+                      <span>{task.dueDate ? formatDate(task.dueDate) : 'N/A'}</span>
                     </div>
                     <div className="mb-4">
                       <span className="font-semibold">Teacher: </span>
-                      <span>{task.teacher_id}</span>
+                      <span>{task.teacherId || 'Unknown'}</span>
                     </div>
                     <Link
                       href={`/student/writing-test/${task.id}`}
@@ -126,7 +157,7 @@ export default function StudentTasksPage() {
           />
           <p className="text-gray-500 text-lg">No tasks available yet.</p>
         </div>
-      )}
-    </section>
+      )}      
+    </section>  
   );
 }

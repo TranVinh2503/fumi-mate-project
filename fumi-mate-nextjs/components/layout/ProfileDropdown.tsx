@@ -6,7 +6,7 @@ import { User, LogOut, Mail, Bell, Settings, HelpCircle } from 'lucide-react';
 
 interface ProfileDropdownProps {
   username: string;
-  role: 'student' | 'teacher';
+  role: 'student' | 'teacher' | 'admin';
 }
 
 export default function ProfileDropdown({ username, role }: ProfileDropdownProps) {

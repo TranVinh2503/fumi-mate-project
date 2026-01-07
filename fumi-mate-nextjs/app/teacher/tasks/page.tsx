@@ -36,10 +36,9 @@ export default function TeacherTasksPage() {
 
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-4xl font-bold">Task Management</h2>
-        <Link
-          href="/teacher/tasks/create"
+      <div className="flex justify-between items-center my-8">
+        <h2 className="text-4xl font-title font-bold">Task Management</h2>
+        <Link href="/teacher/tasks/create"
           className="bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary transition-colors flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
@@ -64,7 +63,7 @@ export default function TeacherTasksPage() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100 border-b-2 border-primary">
+              <thead className="bg-gray-100 border-b border-gray">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Task ID</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Question</th>

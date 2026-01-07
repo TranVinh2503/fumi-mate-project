@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="bg-white border-t border-gray-200 py-12">
       <div className="container mx-auto px-4">
         {/* Top Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-3 mx-5 gap-8">
           {/* Left: Brand & Promo */}
           <div>
             <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-gray-900 mb-4">
@@ -39,17 +39,12 @@ export default function Footer() {
           </div>
 
           {/* Middle: Image */}
-          <div className="flex justify-center items-center">
-            <div className="relative w-48 h-48">
-              {/* Placeholder for footer image */}
-              <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-                <span className="text-4xl">🎌</span>
-              </div>
-            </div>
+          <div className="flex justify-center items-center  w-48 h-48">
+                <img src="images/footer-image.png" alt="Footer Image" />
           </div>
 
           {/* Right: Links */}
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <h4 className="font-semibold text-primary mb-4">Practice</h4>
               <ul className="space-y-2">

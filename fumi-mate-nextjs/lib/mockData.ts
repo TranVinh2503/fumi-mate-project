@@ -100,13 +100,13 @@ export const mockSubmissions: Submission[] = [
 ];
 
 // Helper functions
-export const getTasksForStudent = (studentId: string): Task[] => {
+export const getTasksByStudentId = (studentId: string): Task[] => {
   // In real app, this would filter tasks assigned to student
   // For demo, return all tasks
   return mockTasks;
 };
 
-export const getSubmissionsForStudent = (studentId: string): Submission[] => {
+export const getSubmissionsByStudentId = (studentId: string): Submission[] => {
   return mockSubmissions.filter(sub => sub.student_id === studentId);
 };
 

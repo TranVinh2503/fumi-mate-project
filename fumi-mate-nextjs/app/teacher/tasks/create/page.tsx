@@ -71,13 +71,7 @@ export default function CreateTaskPage() {
     <section className="section-padding mt-5 container mx-auto px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-bold">Create New Task</h2>
-          <Link
-            href="/teacher/tasks"
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            ← Back to Tasks
-          </Link>
+          <h2 className="text-4xl font-title font-bold">Create New Task</h2>
         </div>
 
         {message && (
@@ -86,7 +80,7 @@ export default function CreateTaskPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg p-8">
           {/* Basic Information */}
           <div className="mb-8">
             <h3 className="text-2xl font-semibold mb-4">Basic Information</h3>
@@ -95,14 +89,9 @@ export default function CreateTaskPage() {
               <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
                 Task Title *
               </label>
-              <input
-                type="text"
-                id="title"
-                value={formData.title}
+              <input type="text" id="title" value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="custom-input"
-                placeholder="e.g., N5 Kanji Writing Practice"
-                required
+                className="custom-input" placeholder="e.g., N5 Kanji Writing Practice" required
               />
             </div>
 
@@ -261,16 +250,10 @@ export default function CreateTaskPage() {
 
           {/* Submit Buttons */}
           <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors btn-hover-scale"
-            >
+            <button type="submit" className="bg-secondary text-white px-6 rounded-lg font-semibold hover:bg-primary transition-colors gap-2">
               Create Task
             </button>
-            <Link
-              href="/teacher/tasks"
-              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center"
-            >
+            <Link href="/teacher/tasks" className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center">
               Cancel
             </Link>
           </div>

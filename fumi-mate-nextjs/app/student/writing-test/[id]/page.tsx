@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getTaskById, getQuestionById, getSubmissionsForStudent } from '@/lib/mockData';
+import { getTaskById, getQuestionById, getSubmissionsByStudentId } from '@/lib/mockData';
 import { Task, Submission } from '@/lib/types';
 
 export default function WritingTestPage({ params }: { params: { id: string } }) {
@@ -34,7 +34,7 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     const foundTask = getTaskById(taskId);
     setTask(foundTask || null);
 
-    const submissions = getSubmissionsForStudent(studentId);
+    const submissions = getSubmissionsByStudentId(studentId);
     const foundSubmission = submissions.find(sub => sub.task_id === taskId);
     if (foundSubmission) {
       setSubmission(foundSubmission);
@@ -114,7 +114,7 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold mb-4">Writing Test</h2>
+        <h2 className="text-4xl font-title font-bold mb-8">Writing Test</h2>
 
         {/* Flash messages */}
         {message && (

@@ -1,0 +1,403 @@
+{
+	"info": {
+		"_postman_id": "fumi-mate-api-v1.0",
+		"name": "Fumi Mate API - Japanese Writing Tasks",
+		"description": "API for generating Japanese writing tasks with Gemini AI. \n\n## Features\n- Generate Japanese writing prompts\n- 5 task types: letter, speech, opinion, narrative, comparison\n- Level support: N5, N4, N3, N2, N1\n- Complete rubric with 4 criteria (100 points)\n\n## Rate Limiting\n- 1 request per 30 seconds (free tier)\n- Results are cached for reuse\n- Mock data available on rate limit",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Generate Task",
+			"item": [
+				{
+					"name": "Generate Letter Writing Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"letter\",\n    \"level\": \"N3\",\n    \"numQuestions\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate a Japanese letter writing task. Returns authentic prompts with vocabulary hints and grammar patterns."
+					},
+					"response": [
+						{
+							"name": "Success - Letter Task",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"topic\": \"letter\",\n    \"level\": \"N3\",\n    \"numQuestions\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/tasks/generate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"tasks",
+										"generate"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"taskId\": 1,\n    \"title\": \"Japanese Writing Task: Letter\",\n    \"level\": \"N3\",\n    \"description\": \"Write in Japanese focusing on letter. Follow the rubric for assessment.\",\n    \"prompts\": [\n        {\n            \"id\": 1,\n            \"type\": \"letter\",\n            \"prompt\": \"日本で１週間ホームスティしました。お世話になったホストファミリーに手紙を書きなさい。楽しかった思い出を２つ以上書いて、感謝の気持ちと、また会いたい気持ちを伝えてください。\",\n            \"wordCount\": 500,\n            \"vocabulary\": [\n                \"ホームスティ\",\n                \"お世话\",\n                \"思い出\",\n                \"感謝\",\n                \"気持ち\"\n            ],\n            \"grammar\": [\n                \"〜ました\",\n                \"〜てください\",\n                \"〜と思います\"\n            ]\n        }\n    ],\n    \"rubric\": {\n        \"criteria\": [\n            {\n                \"name\": \"Task Achievement\",\n                \"japanese\": \"タスク達成度\",\n                \"maxPoints\": 25\n            },\n            {\n                \"name\": \"Content & Organization\",\n                \"japanese\": \"内容・構成\",\n                \"maxPoints\": 25\n            },\n            {\n                \"name\": \"Vocabulary & Expression\",\n                \"japanese\": \"語彙・表現\",\n                \"maxPoints\": 25\n            },\n            {\n                \"name\": \"Grammar & Accuracy\",\n                \"japanese\": \"文法・表記の正確さ\",\n                \"maxPoints\": 25\n            }\n        ]\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Generate Opinion Writing Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"opinion\",\n    \"level\": \"N3\",\n    \"numQuestions\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate Japanese opinion essay tasks. Good for practicing expressing viewpoints and arguments."
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Speech Writing Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"speech\",\n    \"level\": \"N2\",\n    \"numQuestions\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate a Japanese speech/presentation task. Suitable for advanced learners."
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Narrative Writing Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"narrative\",\n    \"level\": \"N3\",\n    \"numQuestions\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate a Japanese narrative/personal story task. Practice telling experiences and stories."
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Comparison Writing Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"comparison\",\n    \"level\": \"N2\",\n    \"numQuestions\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate a Japanese comparison/contrast essay task. Practice analyzing pros and cons."
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Multiple Prompts",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"letter\",\n    \"level\": \"N4\",\n    \"numQuestions\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Generate multiple writing prompts (1-3). Returns array of prompts for extended practice."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Different Levels",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"opinion\",\n    \"level\": \"N5\",\n    \"numQuestions\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Test with beginner level (N5). Simpler vocabulary and grammar patterns."
+					},
+					"response": []
+				}
+			],
+			"description": "Generate Japanese writing tasks with various topics and levels."
+		},
+		{
+			"name": "Error Handling",
+			"item": [
+				{
+					"name": "Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"letter\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Test error response when required fields are missing. Returns 400 Bad Request."
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid numQuestions Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"topic\": \"letter\",\n    \"level\": \"N3\",\n    \"numQuestions\": \"one\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"generate"
+							]
+						},
+						"description": "Test error response when numQuestions is not an integer. Returns 400 Bad Request."
+					},
+					"response": []
+				}
+			],
+			"description": "Test error handling scenarios."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
+

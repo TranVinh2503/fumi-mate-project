@@ -1,0 +1,78 @@
+{
+  "taskId": 1,
+  "title": "Japanese Writing Task: Letter",
+  "level": "N3",
+  "description": "Write in Japanese focusing on letter. Follow the rubric for assessment.",
+  "prompts": [
+    {
+      "id": 1,
+      "type": "letter",
+      "prompt": "日本で１週間ホームステイしました。お世話になったホストファミリーに手紙を書きなさい。楽しかった思い出を２つ以上書いて、感謝の気持ちと、また会いたい気持ちを伝えてください。",
+      "wordCount": 500,
+      "vocabulary": [
+        "ホーム斯蒂",
+        "お世話",
+        "思い出",
+        "感謝",
+        "気持ち"
+      ],
+      "grammar": [
+        "〜ました",
+        "〜てください",
+        "〜と思います"
+      ]
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "name": "Task Achievement",
+        "japanese": "タスク達成度",
+        "maxPoints": 25,
+        "description": "Focus: correct format, appropriate audience, required content, suitable length",
+        "levels": {
+          "excellent": "22-25: Fully meets requirements with clear communication purpose",
+          "good": "17-21: Meets most requirements with minor issues",
+          "satisfactory": "12-16: Partially meets requirements",
+          "needsImprovement": "0-11: Does not meet basic requirements"
+        }
+      },
+      {
+        "name": "Content & Organization",
+        "japanese": "内容・構成",
+        "maxPoints": 25,
+        "description": "Focus: argument, structure 導入-本論-結論, coherence, connectors",
+        "levels": {
+          "excellent": "22-25: Clear structure with logical flow and appropriate connectors",
+          "good": "17-21: Generally logical with some organizational issues",
+          "satisfactory": "12-16: Basic structure but unclear transitions",
+          "needsImprovement": "0-11: Disorganized or difficult to follow"
+        }
+      },
+      {
+        "name": "Vocabulary & Expression",
+        "japanese": "語彙・表現",
+        "maxPoints": 25,
+        "description": "Focus: N3-N2 vocabulary, appropriate expressions, natural Japanese",
+        "levels": {
+          "excellent": "22-25: Rich vocabulary with natural, context-appropriate expressions",
+          "good": "17-21: Good vocabulary with mostly natural expressions",
+          "satisfactory": "12-16: Limited vocabulary, some unnatural expressions",
+          "needsImprovement": "0-11: Very limited vocabulary, many inappropriate expressions"
+        }
+      },
+      {
+        "name": "Grammar & Accuracy",
+        "japanese": "文法・表記の正確さ",
+        "maxPoints": 25,
+        "description": "Focus: N4-N3-N2 grammar patterns, word order, particles, writing accuracy",
+        "levels": {
+          "excellent": "22-25: Accurate grammar with appropriate complexity",
+          "good": "17-21: Mostly accurate with minor errors",
+          "satisfactory": "12-16: Frequent errors but generally understandable",
+          "needsImprovement": "0-11: Many errors that impede understanding"
+        }
+      }
+    ]
+  }
+}

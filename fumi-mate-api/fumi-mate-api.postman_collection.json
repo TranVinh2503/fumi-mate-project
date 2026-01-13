@@ -1,12 +1,12 @@
 {
   "info": {
-    "name": "Fumi-Mate API",
-    "description": "API for generating Japanese language tasks using Gemini AI",
+    "name": "Fumi-Mate API - Japanese Writing Tasks",
+    "description": "API for generating Japanese writing tasks with rubric based on debai&tieuchi.md",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Generate Task",
+      "name": "Generate Letter Writing Task",
       "request": {
         "method": "POST",
         "header": [
@@ -17,7 +17,157 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"topic\": \"Japan\",\n  \"level\": \"beginner\",\n  \"numQuestions\": 1\n}"
+          "raw": "{\n  \"topic\": \"letter\",\n  \"level\": \"intermediate\",\n  \"numQuestions\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Opinion Writing Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"opinion\",\n  \"level\": \"beginner\",\n  \"numQuestions\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Speech Writing Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"speech\",\n  \"level\": \"intermediate\",\n  \"numQuestions\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Narrative Writing Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"narrative\",\n  \"level\": \"advanced\",\n  \"numQuestions\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Comparison Writing Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"comparison\",\n  \"level\": \"beginner\",\n  \"numQuestions\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/tasks/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "tasks",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Multiple Prompts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"letter\",\n  \"level\": \"advanced\",\n  \"numQuestions\": 3\n}"
         },
         "url": {
           "raw": "http://localhost:5000/api/tasks/generate",

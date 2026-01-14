@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GraduationCap, ShoppingCart, Heart, Menu, X } from 'lucide-react';
-import ProfileDropdown from './ProfileDropdown';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -20,6 +19,10 @@ export default function Navbar() {
     return null; // prevents hydration mismatch
   }
 
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <nav className="fixed top-[30px] left-0 right-0 bg-white shadow-lg z-40">
@@ -124,6 +127,17 @@ export default function Navbar() {
           </Link>
         </>
       ) : null}
+      
+      {/* Username and Logout button */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-gray-700">{user.username || 'User'}</span>
+        <button
+          onClick={handleLogout}
+          className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+        >
+          Logout
+        </button>
+      </div>
     </>
   ) : (
     <>

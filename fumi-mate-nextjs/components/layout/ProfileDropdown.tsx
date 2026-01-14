@@ -7,9 +7,10 @@ import { User, LogOut, Mail, Bell, Settings, HelpCircle } from 'lucide-react';
 interface ProfileDropdownProps {
   username: string;
   role: 'student' | 'teacher' | 'admin';
+  onLogout?: () => void;
 }
 
-export default function ProfileDropdown({ username, role }: ProfileDropdownProps) {
+export default function ProfileDropdown({ username, role, onLogout }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -107,8 +108,9 @@ export default function ProfileDropdown({ username, role }: ProfileDropdownProps
           <div className="border-t border-gray-200">
             <button
               onClick={() => {
-                // TODO: Implement logout functionality
-                console.log('Logout clicked');
+                if (onLogout) {
+                  onLogout();
+                }
                 setIsOpen(false);
               }}
               className="flex items-center gap-3 px-4 py-3 w-full hover:bg-red-50 transition-colors text-red-600"

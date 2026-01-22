@@ -1,0 +1,597 @@
+{
+  "info": {
+    "name": "Fumi-Mate Question Generation API",
+    "description": "Complete collection to test Question Generation endpoints with Gemini AI integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "teacherToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login as Teacher",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save the access token to environment variable",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('teacherToken', jsonData.access_token);",
+                  "    console.log('Teacher token saved:', jsonData.access_token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"sensei_akiko\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as teacher to get JWT token. The token will be automatically saved to the collection variable 'teacherToken'."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save the access token to environment variable",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('studentToken', jsonData.access_token);",
+                  "    console.log('Student token saved:', jsonData.access_token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"student_hana\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as student to test authorization (students cannot generate questions)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints to get JWT tokens"
+    },
+    {
+      "name": "2. Generate Questions",
+      "item": [
+        {
+          "name": "Generate Question - Letter (手紙) N3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save question ID for later use",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('questionId', jsonData.question.id);",
+                  "    console.log('Question ID saved:', jsonData.question.id);",
+                  "    console.log('Question content:', jsonData.question.content.substring(0, 50) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\",\n    \"topic\": \"ホームステイの思い出\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Generate a letter-type question about homestay memories at N3 level. Uses Gemini AI or falls back to mock data."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Question - Speech (スピーチ) N2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"スピーチ\",\n    \"topic\": \"人生の教訓\",\n    \"level\": \"N2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Generate a speech-type question about life lessons at N2 level."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Question - Opinion (意見・感想) N3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"意見・感想\",\n    \"topic\": \"環境問題\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Generate an opinion/impression type question about environmental issues at N3 level."
+          },
+          "response": []
+        }
+      ],
+      "description": "Generate questions using Gemini AI (requires teacher authentication)"
+    },
+    {
+      "name": "3. List & Filter Questions",
+      "item": [
+        {
+          "name": "List All Questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"]
+            },
+            "description": "Get all questions from the database (default limit: 50)"
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Genre - Letter (手紙)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions?genre=手紙",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"],
+              "query": [
+                {
+                  "key": "genre",
+                  "value": "手紙"
+                }
+              ]
+            },
+            "description": "Get only letter-type questions"
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Level - N3",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions?level=N3",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"],
+              "query": [
+                {
+                  "key": "level",
+                  "value": "N3"
+                }
+              ]
+            },
+            "description": "Get only N3 level questions"
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Genre AND Level",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions?genre=手紙&level=N3",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"],
+              "query": [
+                {
+                  "key": "genre",
+                  "value": "手紙"
+                },
+                {
+                  "key": "level",
+                  "value": "N3"
+                }
+              ]
+            },
+            "description": "Get letter-type questions at N3 level"
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination - First 10",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions?limit=10&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get first 10 questions (page 1)"
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination - Next 10",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/task/questions?limit=10&offset=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "questions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get next 10 questions (page 2)"
+          },
+          "response": []
+        }
+      ],
+      "description": "List and filter questions with pagination"
+    },
+    {
+      "name": "4. Error Handling Tests",
+      "item": [
+        {
+          "name": "Missing Fields Error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Test error handling when required fields are missing. Expected: 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Genre Error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"invalid_genre\",\n    \"topic\": \"test\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Test error handling for invalid genre. Expected: 400 Bad Request with error message listing valid genres"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Level Error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\",\n    \"topic\": \"test\",\n    \"level\": \"N5\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Test error handling for invalid level. Expected: 400 Bad Request with error message listing valid levels (N3, N2)"
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized - No Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\",\n    \"topic\": \"test\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Test authentication requirement. Expected: 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Forbidden - Student Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\",\n    \"topic\": \"test\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Test role-based authorization. Students cannot generate questions. Expected: 403 Forbidden"
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Question (Cache Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"genre\": \"手紙\",\n    \"topic\": \"ホームステイの思い出\",\n    \"level\": \"N3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate-question",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate-question"]
+            },
+            "description": "Try to generate the same question again (same genre, topic, level). If cached, will return same content. If similarity_hash matches, may return 409 Conflict."
+          },
+          "response": []
+        }
+      ],
+      "description": "Test error handling and edge cases"
+    },
+    {
+      "name": "5. Existing Task Generation",
+      "item": [
+        {
+          "name": "Generate Task - Letter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"topic\": \"letter\",\n    \"level\": \"N5\",\n    \"numQuestions\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate"]
+            },
+            "description": "Test the existing task generation endpoint (now fixed with uncommented import)"
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Task - Speech",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"topic\": \"speech\",\n    \"level\": \"N3\",\n    \"numQuestions\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/task/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["task", "generate"]
+            },
+            "description": "Generate a speech task with 1 question"
+          },
+          "response": []
+        }
+      ],
+      "description": "Test the existing task generation endpoint (fixed)"
+    }
+  ]
+}

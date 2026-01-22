@@ -45,7 +45,7 @@ export default function LoginPage() {
       localStorage.setItem('access_token', data.access_token)
 
       setMessage('Login successful!')
-      router.push('/') // hoặc dashboard
+      router.push('/login') // hoặc dashboard
 
     } catch (err) {
       setMessage('Server error')

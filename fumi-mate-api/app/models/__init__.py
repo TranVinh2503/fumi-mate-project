@@ -1,6 +1,8 @@
 from .user import User
-from .submission import Submission
-from .task import Task, Question
-from .feedback import Feedback
 from .student import StudentProfile
 from .teacher import TeacherProfile
+from .task import Task, TaskQuestion
+from .submission import Submission
+from .feedback import Feedback
+from .question_bank import QuestionBank
+from .detailed_feedback import DetailedFeedback

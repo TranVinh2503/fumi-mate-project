@@ -1,8 +1,6 @@
 from datetime import datetime
 from ..extensions import db
 
-
-# ── Task: e.g., "N4 Kanji Practice", "Essay Writing Test" ──
 class Task(db.Model):
     __tablename__ = 'task'
 
@@ -15,23 +13,22 @@ class Task(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_done = db.Column(db.Boolean, default=False, nullable=False)
 
-    questions = db.relationship('Question', backref='task', lazy=True, cascade="all, delete-orphan")
-
-    # NEW: link back to User
+    # Quan hệ với bảng trung gian TaskQuestion
+    task_questions = db.relationship('TaskQuestion', back_populates='task', lazy=True, cascade="all, delete-orphan")
     created_user = db.relationship('User', backref='tasks', lazy=True)
 
+    def get_questions(self):
+        return [tq.question_bank for tq in sorted(self.task_questions, key=lambda x: x.order)]
 
-
-# ── Question: belongs to one Task ──
-class Question(db.Model):
-    __tablename__ = 'question'
+# THAY THẾ CLASS QUESTION CŨ BẰNG CLASS NÀY
+class TaskQuestion(db.Model):
+    __tablename__ = 'task_question'
 
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
-    question_text = db.Column(db.Text, nullable=False)
-    question_type = db.Column(db.String(50))  # e.g., 'kanji', 'sentence', 'translation', 'essay'
-    hint = db.Column(db.String(255))  # optional: e.g., “Use this word: 食べる”
-    sample_answer = db.Column(db.Text)  # optional: teacher’s example answer
+    question_bank_id = db.Column(db.Integer, db.ForeignKey('question_bank.id'), nullable=False)
+    order = db.Column(db.Integer, default=1)
 
-    def __repr__(self):
-        return f'<Question {self.id} ({self.question_type})>'
+    # Nối ngược lại Task và QuestionBank
+    task = db.relationship('Task', back_populates='task_questions')
+    question_bank = db.relationship('QuestionBank', back_populates='task_questions')

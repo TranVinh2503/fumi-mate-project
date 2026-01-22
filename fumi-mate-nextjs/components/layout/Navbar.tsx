@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GraduationCap, ShoppingCart, Heart, Menu, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation'
 
 export default function Navbar() {
+  const router = useRouter()
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -21,6 +24,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
+    router.push('/')
     setIsMobileMenuOpen(false);
   };
 

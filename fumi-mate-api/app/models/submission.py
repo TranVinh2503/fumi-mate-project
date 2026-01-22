@@ -13,5 +13,10 @@ class Submission(db.Model):
     teacher_feedback = db.Column(db.Text)
     teacher_score = db.Column(db.Float)
     status = db.Column(db.String(20), default='draft') #done
+    version = db.Column(db.Integer, default=1)  # For versioning
+    parent_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)  # For re-submissions
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Self-referential relationship for parent submissions
+    parent = db.relationship('Submission', remote_side=[id], backref='children')

@@ -4,7 +4,7 @@ from datetime import datetime
 from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.models.task import Task, Question
+from app.models.task import Task, TaskQuestion
 
 student_bp = Blueprint('student', __name__)
 

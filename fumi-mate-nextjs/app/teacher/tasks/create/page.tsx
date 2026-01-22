@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 
-interface Question {
+interface QuestionBankItem {
   id: number;
-  questionText: string;
-  questionType: string;
-  hint: string;
-  sampleAnswer: string;
+  genre: string;
+  topic: string;
+  content: string;
+  level: string;
+  required_points: string;
 }
 
 export default function CreateTaskPage() {
@@ -21,50 +22,128 @@ export default function CreateTaskPage() {
     difficulty: 'N5',
     dueDate: '',
   });
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
+  const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
+  const [filteredQuestions, setFilteredQuestions] = useState<QuestionBankItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [genreFilter, setGenreFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const addQuestion = () => {
-    const newQuestion: Question = {
-      id: Date.now(),
-      questionText: '',
-      questionType: 'writing',
-      hint: '',
-      sampleAnswer: '',
+  // Fetch question bank on component mount
+  useEffect(() => {
+    const fetchQuestionBank = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setError('Not authenticated');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/task/questions', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch questions');
+        }
+
+        const data = await res.json();
+        setQuestionBank(data.questions);
+        setFilteredQuestions(data.questions);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-    setQuestions([...questions, newQuestion]);
+
+    fetchQuestionBank();
+  }, []);
+
+  // Filter questions based on search and filters
+  useEffect(() => {
+    let filtered = questionBank;
+
+    if (searchTerm) {
+      filtered = filtered.filter(q =>
+        q.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.content.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (genreFilter) {
+      filtered = filtered.filter(q => q.genre === genreFilter);
+    }
+
+    if (levelFilter) {
+      filtered = filtered.filter(q => q.level === levelFilter);
+    }
+
+    setFilteredQuestions(filtered);
+  }, [questionBank, searchTerm, genreFilter, levelFilter]);
+
+  const toggleQuestionSelection = (questionId: number) => {
+    setSelectedQuestionIds(prev =>
+      prev.includes(questionId)
+        ? prev.filter(id => id !== questionId)
+        : [...prev, questionId]
+    );
   };
 
-  const removeQuestion = (id: number) => {
-    setQuestions(questions.filter(q => q.id !== id));
-  };
-
-  const updateQuestion = (id: number, field: keyof Question, value: string) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, [field]: value } : q
-    ));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: Submit to Flask API
-    // const response = await fetch('/api/teacher/tasks', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ ...formData, questions }),
-    // });
-    
-    console.log('Creating task:', {
-      ...formData,
-      questions,
-      createdAt: new Date().toISOString(),
-    });
-    
-    setMessage('✅ Task created successfully!');
-    setTimeout(() => {
-      router.push('/teacher/tasks');
-    }, 1500);
+
+    if (selectedQuestionIds.length === 0) {
+      setMessage('Please select at least one question.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        difficulty: formData.difficulty,
+        dueDate: formData.dueDate || null,
+        questionBankIds: selectedQuestionIds
+      };
+
+      const response = await fetch('/api/teacher/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create task');
+      }
+
+      const data = await response.json();
+      setMessage('✅ Task created successfully!');
+      setTimeout(() => {
+        router.push('/teacher/tasks');
+      }, 1500);
+    } catch (err: any) {
+      console.error('Error creating task:', err);
+      setMessage(`❌ Error: ${err.message}`);
+    }
   };
 
   return (

@@ -2,23 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getTasksForTeacher, getQuestionById } from '@/lib/mockData';
-import { Task } from '@/lib/types';
+
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 
 export default function TeacherTasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // TODO: Fetch tasks from Flask API
-    // const response = await fetch('/api/teacher/tasks');
-    // const data = await response.json();
-    // setTasks(data);
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setError('Not authenticated');
+      setLoading(false);
+      return;
+    }
 
-    // Mock data - assuming current teacher is teacher1
-    const teacherTasks = getTasksForTeacher('teacher1');
-    setTasks(teacherTasks);
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/student/tasks', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.msg || 'Failed to fetch tasks');
+        }
+        const data = await res.json();
+        setTasks(data.tasks);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
   }, []);
 
   const handleDelete = (taskId: string) => {
@@ -34,6 +57,9 @@ export default function TeacherTasksPage() {
     setMessage('Task deleted successfully!');
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  console.log("Teacher Task page");
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
       <div className="flex justify-between items-center my-8">
@@ -66,66 +92,54 @@ export default function TeacherTasksPage() {
               <thead className="bg-gray-100 border-b border-gray">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Task ID</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Question</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Title</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Difficulty</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Due Date</th>
                   <th className="px-6 py-4 text-center font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((task) => {
-                  const question = getQuestionById(task.question_id);
-                  return (
-                    <tr key={task.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-900">{task.id}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {question?.question_text || 'N/A'}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Question ID: {task.question_id}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="badge badge-info">
-                          {question?.difficulty_level || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        {new Date(task.deadline).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-center gap-2">
-                          <Link
-                            href={`/teacher/tasks/${task.id}`}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </Link>
-                          <Link
-                            href={`/teacher/tasks/${task.id}/edit`}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Edit Task"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(task.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Task"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {tasks.map((task) => (
+                  <tr key={task.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-900">{task.id}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-900">{task.title}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="badge badge-info">{task.difficulty}</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center gap-2">
+                        <Link
+                          href={`/teacher/tasks/${task.id}`}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </Link>
+                        <Link
+                          href={`/teacher/tasks/${task.id}/edit`}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Edit Task"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(task.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Task"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

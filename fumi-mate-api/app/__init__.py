@@ -19,6 +19,7 @@ def create_app():
     # ===== CONFIG =====
     app.config.from_object(Config)
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+    app.config['CORS_HEADERS'] = 'Content-Type'
 
     # ===== EXTENSIONS =====
     db.init_app(app)
@@ -26,20 +27,15 @@ def create_app():
     migrate.init_app(app, db)  # 🔥 THIS IS REQUIRED
 
 
-    # ===== CORS =====
     # Configure CORS to allow localhost:3000 with credentials
-    cors_config = {
-        "resources": {
-            r"/api/*": {
-                "origins": "http://localhost:3000",
-                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization"],
-                "supports_credentials": True,
-            }
-        }
-    }
-    CORS(app, **cors_config)
-
+    # ===== CORS =====
+    CORS(app, 
+         resources={r"/api/*": {
+             "origins": ["http://localhost:3000"],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"]
+         }},
+         supports_credentials=True)
     # ===== BLUEPRINTS =====
     app.register_blueprint(main_bp, url_prefix="/api")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")

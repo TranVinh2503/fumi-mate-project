@@ -11,6 +11,7 @@ export default function TeacherTasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -21,7 +22,7 @@ export default function TeacherTasksPage() {
 
     const fetchTasks = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/student/tasks', {
+        const res = await fetch(`${apiUrl}/student/tasks`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'

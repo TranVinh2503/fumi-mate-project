@@ -7,6 +7,7 @@ import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -21,7 +22,7 @@ export default function LoginPage() {
     console.log("Register here")
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(`${apiUrl}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +43,7 @@ export default function LoginPage() {
       }
 
       // ✅ Save JWT
-      localStorage.setItem('access_token', data.access_token)
+      localStorage.setItem('token', data.access_token)
 
       setMessage('Login successful!')
       router.push('/login') // hoặc dashboard

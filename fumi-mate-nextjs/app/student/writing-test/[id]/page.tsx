@@ -3,44 +3,84 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getTaskById, getQuestionById, getSubmissionsByStudentId } from '@/lib/mockData';
-import { Task, Submission } from '@/lib/types';
+
+type Question = {
+  id: number;
+  questionText: string;
+  questionType: string;
+  hint?: string;
+  sampleAnswer?: string;
+};
+
+type TaskData = {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  dueDate: string | null;
+  createdAt: string | null;
+  questions: Question[];
+  submission: {
+    id: number;
+    content: string;
+    status: string;
+    createdAt: string | null;
+    updatedAt: string | null;
+  } | null;
+};
 
 export default function WritingTestPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const taskId = params.id;
-  const studentId = 'student1'; // TODO: Get from auth context
-
-  const [task, setTask] = useState<Task | null>(null);
-  const [submission, setSubmission] = useState<Submission | null>(null);
+  
+  const [task, setTask] = useState<TaskData | null>(null);
   const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    // TODO: Fetch task and submission from Flask API
-    // const taskResponse = await fetch(`/api/tasks/${taskId}`);
-    // const taskData = await taskResponse.json();
-    // setTask(taskData);
-    //
-    // const submissionResponse = await fetch(`/api/submissions?task_id=${taskId}&student_id=${studentId}`);
-    // const submissionData = await submissionResponse.json();
-    // if (submissionData.length > 0) {
-    //   setSubmission(submissionData[0]);
-    //   setContent(submissionData[0].content);
-    // }
+    const fetchTask = async () => {
+      const token = localStorage.getItem('access_token');
+      
+      if (!token) {
+        setError('Not authenticated. Please login first.');
+        setLoading(false);
+        return;
+      }
 
-    // Mock data for now
-    const foundTask = getTaskById(taskId);
-    setTask(foundTask || null);
+      try {
+        const res = await fetch(`${apiUrl}/student/tasks/${taskId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-    const submissions = getSubmissionsByStudentId(studentId);
-    const foundSubmission = submissions.find(sub => sub.task_id === taskId);
-    if (foundSubmission) {
-      setSubmission(foundSubmission);
-      setContent(foundSubmission.content);
-    }
-  }, [taskId, studentId]);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to fetch task');
+        }
+
+        const data = await res.json();
+        setTask(data.task);
+        
+        // If there's an existing submission, load its content
+        if (data.task.submission) {
+          setContent(data.task.submission.content || '');
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTask();
+  }, [taskId, apiUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,59 +89,83 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
 
     try {
-      // TODO: Submit to Flask API
-      // const response = await fetch('/api/submissions', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     task_id: taskId,
-      //     student_id: studentId,
-      //     content
-      //   }),
-      // });
-      // if (response.ok) {
-      //   setMessage('Submission successful!');
-      //   setSubmission(await response.json());
-      // } else {
-      //   setMessage('Submission failed.');
-      // }
-
-      // Mock success for now
-      setMessage('✅ Your test has been submitted successfully!');
-      // Update local submission status
-      if (submission) {
-        setSubmission({ ...submission, status: 1, submission_time: new Date().toISOString() });
-      } else {
-        // Create new submission
-        const newSubmission: Submission = {
-          id: `sub${Date.now()}`,
-          task_id: taskId,
-          student_id: studentId,
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${apiUrl}/student/submit-test/${taskId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           content,
-          status: 1,
-          submission_time: new Date().toISOString(),
-        };
-        setSubmission(newSubmission);
+          action: 'submit',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Submission failed');
       }
+
+      setMessage('✅ Your test has been submitted successfully!');
+      
+      // Update task with new submission status
+      if (task) {
+        setTask({
+          ...task,
+          submission: {
+            ...task.submission!,
+            status: 'submitted',
+            content,
+          },
+        });
+      }
+
       setTimeout(() => router.push('/student/submissions'), 2000);
-    } catch (error) {
-      setMessage('❌ Submission failed.');
+    } catch (err: any) {
+      console.error(err);
+      setMessage('❌ Submission failed: ' + err.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleSaveDraft = () => {
-    // TODO: Save draft to Flask API
-    console.log('Draft saved:', { taskId, content });
-    setMessage('💾 Draft saved successfully!');
-    setTimeout(() => setMessage(''), 3000);
+  const handleSaveDraft = async () => {
+    setSubmitting(true);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${apiUrl}/student/submit-test/${taskId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content,
+          action: 'save',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to save draft');
+      }
+
+      setMessage('💾 Draft saved successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setMessage('❌ Failed to save draft: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (!task) {
+  if (loading) {
     return (
       <div className="container mx-auto section-padding text-center">
         <p className="text-xl text-gray-600">Loading task...</p>
@@ -109,16 +173,39 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     );
   }
 
-  const question = getQuestionById(task.question_id);
+  if (error) {
+    return (
+      <div className="container mx-auto section-padding text-center">
+        <p className="text-xl text-red-600">{error}</p>
+        <Link href="/student/tasks" className="text-blue-500 hover:underline mt-4 inline-block">
+          ← Back to Tasks
+        </Link>
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="container mx-auto section-padding text-center">
+        <p className="text-xl text-gray-600">Task not found</p>
+        <Link href="/student/tasks" className="text-blue-500 hover:underline mt-4 inline-block">
+          ← Back to Tasks
+        </Link>
+      </div>
+    );
+  }
+
+  const isSubmitted = task.submission?.status === 'submitted';
 
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-4xl font-title font-bold mb-8">Writing Test</h2>
+        <h3 className="text-xl font-semibold mb-4 text-gray-700">{task.title}</h3>
 
         {/* Flash messages */}
         {message && (
-          <div className="alert alert-success mb-4">
+          <div className={`alert mb-4 ${message.includes('✅') ? 'alert-success' : message.includes('❌') ? 'alert-error' : 'alert-info'}`}>
             {message}
             <button
               onClick={() => setMessage('')}
@@ -129,28 +216,41 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
+        {/* Task info */}
         <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-          <h3 className="font-semibold mb-3">Question:</h3>
-          <p className="text-gray-700">{question?.question_text || 'N/A'}</p>
-          <div className="mt-3 text-sm text-gray-600">
-            <span className="font-semibold">Difficulty: </span>
-            <span>{question?.difficulty_level || 'N/A'}</span>
+          <h3 className="font-semibold mb-3">Questions:</h3>
+          {task.questions && task.questions.length > 0 ? (
+            task.questions.map((q, index) => (
+              <div key={q.id} className="mb-4 pb-4 border-b border-blue-200 last:border-b-0 last:mb-0 last:pb-0">
+                <p className="text-gray-700 font-medium">Q{index + 1}: {q.questionText}</p>
+                {q.hint && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    <span className="font-semibold">Hint:</span> {q.hint}
+                  </p>
+                )}
+                {q.sampleAnswer && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    <span className="font-semibold">Sample Answer:</span> {q.sampleAnswer}
+                  </p>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No questions available</p>
+          )}
+          
+          <div className="mt-4 pt-3 border-t border-blue-200 text-sm text-gray-600">
+            <div className="flex flex-wrap gap-4">
+              <span><span className="font-semibold">Difficulty:</span> {task.difficulty || 'N/A'}</span>
+              <span><span className="font-semibold">Due:</span> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</span>
+            </div>
           </div>
-          <div className="mt-2 text-sm text-gray-600">
-            <span className="font-semibold">Due: </span>
-            <span>{new Date(task.deadline).toLocaleDateString()}</span>
-          </div>
-          <div className="mt-2 text-sm text-gray-600">
-            <span className="font-semibold">Teacher: </span>
-            <span>{task.teacher_id}</span>
-          </div>
-          {submission && (
+          
+          {task.submission && (
             <div className="mt-2 text-sm text-gray-600">
               <span className="font-semibold">Status: </span>
-              <span>
-                {submission.status === 0 && 'Draft'}
-                {submission.status === 1 && 'Submitted'}
-                {submission.status >= 2 && 'Graded'}
+              <span className={isSubmitted ? 'text-green-600 font-semibold' : 'text-orange-600'}>
+                {isSubmitted ? 'Submitted' : 'Draft (not yet submitted)'}
               </span>
             </div>
           )}
@@ -170,26 +270,26 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
               rows={15}
               required
               placeholder="Start writing your answer here..."
-              disabled={submission?.status === 1}
+              disabled={isSubmitted}
             />
             <p className="text-sm text-gray-500 mt-2">
               Character count: {content.length}
             </p>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <button
               type="submit"
-              disabled={loading || submission?.status === 1}
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors btn-hover-scale disabled:opacity-50"
+              disabled={submitting || isSubmitted || !content.trim()}
+              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors btn-hover-scale disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Submitting...' : submission?.status === 1 ? 'Already Submitted' : 'Submit Test'}
+              {submitting ? 'Submitting...' : isSubmitted ? 'Already Submitted' : 'Submit Test'}
             </button>
             <button
               type="button"
               onClick={handleSaveDraft}
-              disabled={submission?.status === 1}
-              className="bg-gray-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
+              disabled={submitting || isSubmitted || !content.trim()}
+              className="bg-gray-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save Draft
             </button>
@@ -205,3 +305,4 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     </section>
   );
 }
+

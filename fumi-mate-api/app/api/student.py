@@ -1,10 +1,14 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+import json
 from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.task import Task, TaskQuestion
+from app.models.user import User
+from app.models.submission import Submission
+from app.extensions import db
 
 student_bp = Blueprint('student', __name__)
 
@@ -12,12 +16,13 @@ student_bp = Blueprint('student', __name__)
 @jwt_required()
 @role_required("student")
 def get_tasks():
-    if request.method == "OPTIONS":
-        return {}, 200
-
-    user_id = get_jwt_identity()
-
-    user = User.query.get(user_id)
+    identity = get_jwt_identity()
+    
+    # Nếu identity là dict: lấy 'id'. Nếu là string: dùng luôn.
+    user_id = identity.get("id") if isinstance(identity, dict) else identity
+    print("user_id", user_id)
+    # Ép kiểu int để query DB
+    user = User.query.get(int(user_id))
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
@@ -40,13 +45,13 @@ def get_tasks():
             "isDone": submission is not None and submission.status == "submitted",
             "questions": [
                 {
-                    "id": q.id,
-                    "questionText": q.question_text,
-                    "questionType": q.question_type,
-                    "hint": q.hint,
-                    "sampleAnswer": q.sample_answer,
+                    "id": q.question_bank.id,
+                    "questionText": q.question_bank.question_text,
+                    "questionType": q.question_bank.question_type,
+                    "hint": q.question_bank.hint,
+                    "sampleAnswer": q.question_bank.sample_answer,
                 }
-                for q in task.questions
+                for q in sorted(task.task_questions, key=lambda x: x.order)
             ]
         })
 
@@ -54,14 +59,15 @@ def get_tasks():
 
 @student_bp.route('/tasks/<int:task_id>', methods=['GET'])
 @jwt_required()
+@role_required("student")
 def get_task(task_id):
     """Get a specific task details"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
-
-    user = User.query.get(user_id)
-    if not user or not isinstance(user, Student):
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
+    identity = get_jwt_identity()
+    user_id = identity.get("id") if isinstance(identity, dict) else identity
+    
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     task = Task.query.get(task_id)
     if not task:
@@ -79,13 +85,14 @@ def get_task(task_id):
         'createdAt': task.created_at.isoformat() if task.created_at else None,
         'questions': [
             {
-                'id': q.id,
-                'questionText': q.question_text,
-                'questionType': q.question_type,
-                'hint': q.hint,
-                'sampleAnswer': q.sample_answer
-            } for q in task.questions
-        ] if task.questions else [],
+                'id': q.question_bank.id,
+                'questionText': q.question_bank.question_text,
+                'questionType': q.question_bank.question_type,
+                'hint': q.question_bank.hint,
+                'sampleAnswer': q.question_bank.sample_answer,
+            }
+            for q in sorted(task.task_questions, key=lambda x: x.order)
+        ] if task.task_questions else [],
         'submission': {
             'id': submission.id,
             'content': submission.content,
@@ -99,14 +106,15 @@ def get_task(task_id):
 
 @student_bp.route('/submissions', methods=['GET'])
 @jwt_required()
+@role_required("student")
 def get_submissions():
     """Get all submissions for the current student"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
+    identity = get_jwt_identity()
+    user_id = identity.get("id") if isinstance(identity, dict) else identity
 
-    user = User.query.get(user_id)
-    if not user or not isinstance(user, Student):
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     submissions = Submission.query.filter_by(student_id=user_id).all()
 
@@ -132,21 +140,22 @@ def get_submissions():
 
 @student_bp.route('/submissions/<int:submission_id>', methods=['GET'])
 @jwt_required()
+@role_required("student")
 def get_submission_detail(submission_id):
     """Get detailed submission with AI feedback"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
+    identity = get_jwt_identity()
+    user_id = identity.get("id") if isinstance(identity, dict) else identity
 
-    user = User.query.get(user_id)
-    if not user or not isinstance(user, Student):
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     submission = Submission.query.get(submission_id)
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
 
     # Ensure student owns this submission
-    if submission.student_id != user_id:
+    if str(submission.student_id) != str(user_id):
         return jsonify({'error': 'Unauthorized. You can only view your own submissions.'}), 403
 
     # Parse AI feedback JSON
@@ -178,14 +187,15 @@ def get_submission_detail(submission_id):
 
 @student_bp.route('/submit-test/<int:task_id>', methods=['POST'])
 @jwt_required()
+@role_required("student")
 def submit_test(task_id):
     """Submit or save a test"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
+    identity = get_jwt_identity()
+    user_id = identity.get("id") if isinstance(identity, dict) else identity
 
-    user = User.query.get(user_id)
-    if not user or not isinstance(user, Student):
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     data = request.get_json()
     if not data or 'content' not in data:
@@ -238,3 +248,4 @@ def submit_test(task_id):
             'aiScore': submission.ai_score
         }
     }), 200
+

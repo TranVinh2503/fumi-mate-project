@@ -12,7 +12,7 @@ auth_bp = Blueprint("auth", __name__)
 def register():
     try:
         data = request.get_json() or {}
-
+        print(data)
         username = data.get("username", "").strip()
         password = data.get("password", "")
         role = data.get("role", "").strip().lower()  # 'student' | 'teacher' | 'admin'
@@ -38,6 +38,7 @@ def register():
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             return jsonify({"message": "Username already exists"}), 409
+        print("existing_user",existing_user)
 
         # 6️⃣ Create user
         user = User(
@@ -65,12 +66,18 @@ def register():
         return jsonify({"message": "Database integrity error"}), 500
     except Exception as e:
         db.session.rollback()
+        # THÊM DÒNG NÀY ĐỂ DEBUG
+        print("--- REGISTER ERROR DETAIL ---")
+        import traceback
+        traceback.print_exc() 
+        print("-----------------------------")
         return jsonify({"message": "Server error", "error": str(e)}), 500
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json() or {}
+    print(data)
 
     username = data.get("username")
     password = data.get("password")
@@ -83,12 +90,11 @@ def login():
     if user is None or not check_password_hash(user.password_hash, password):
         return jsonify({"message": "Invalid username or password"}), 401
 
+    # app/routes/auth.py
     access_token = create_access_token(
-        identity={
-            "id": user.id,
-            "role": user.role
-        }
+        identity={"id": str(user.id), "role": user.role} # Đảm bảo id là string
     )
+    
     print("LOGIN SUCCESSFUL", access_token)
     
     return jsonify({

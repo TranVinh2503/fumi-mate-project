@@ -8,7 +8,7 @@ import json
 import time
 
 # Configuration
-BASE_URL = "http://localhost:5000/api"
+BASE_URL = "http://localhost:5001/api"
 TEST_USERNAME = "sensei_akiko"
 TEST_PASSWORD = "password123"
 

@@ -12,10 +12,21 @@ class StudentProfile(db.Model):
         nullable=False
     )
 
+    class_id = db.Column(
+        db.Integer,
+        db.ForeignKey("class.id"),
+        nullable=True
+    )
+
     jlpt_level = db.Column(db.String(10))  # N5, N4, N3...
     total_points = db.Column(db.Integer, default=0)
 
     user = db.relationship(
         "User",
         backref=db.backref("student_profile", uselist=False)
+    )
+
+    class_ = db.relationship(
+        "Class",
+        back_populates="students"
     )

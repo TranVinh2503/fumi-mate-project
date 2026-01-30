@@ -1,3 +1,4 @@
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
@@ -6,6 +7,7 @@ from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.task import Task, TaskQuestion
+from app.models.question_bank import QuestionBank
 from app.models.user import User
 from app.models.submission import Submission
 from app.extensions import db
@@ -28,6 +30,7 @@ def get_tasks():
 
     tasks = Task.query.all()
     tasks_data = []
+    print("all task tasks",tasks)
 
     for task in tasks:
         submission = Submission.query.filter_by(
@@ -45,11 +48,11 @@ def get_tasks():
             "isDone": submission is not None and submission.status == "submitted",
             "questions": [
                 {
-                    "id": q.question_bank.id,
-                    "questionText": q.question_bank.question_text,
-                    "questionType": q.question_bank.question_type,
-                    "hint": q.question_bank.hint,
-                    "sampleAnswer": q.question_bank.sample_answer,
+                    "id": q.question.id,
+                    "questionText": q.question.question_text,
+                    "questionType": q.question.question_type,
+                    "hint": q.question.hint,
+                    "sampleAnswer": q.question.sample_answer,
                 }
                 for q in sorted(task.task_questions, key=lambda x: x.order)
             ]
@@ -85,11 +88,11 @@ def get_task(task_id):
         'createdAt': task.created_at.isoformat() if task.created_at else None,
         'questions': [
             {
-                'id': q.question_bank.id,
-                'questionText': q.question_bank.question_text,
-                'questionType': q.question_bank.question_type,
-                'hint': q.question_bank.hint,
-                'sampleAnswer': q.question_bank.sample_answer,
+                'id': q.question.id,
+                'questionText': q.question.question_text,
+                'questionType': q.question.question_type,
+                'hint': q.question.hint,
+                'sampleAnswer': q.question.sample_answer,
             }
             for q in sorted(task.task_questions, key=lambda x: x.order)
         ] if task.task_questions else [],

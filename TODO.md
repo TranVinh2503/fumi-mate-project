@@ -1,0 +1,4 @@
+- [x] Implement POST /api/teacher/tasks backend API
+- [x] Update frontend to select from QuestionBank instead of creating new questions
+- [x] Update frontend to send question_bank_ids to API
+- [ ] Test task creation flow

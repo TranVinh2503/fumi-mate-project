@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getSubmissionById } from '@/lib/mockData';
+import { getSubmissionById, getTaskById, getQuestionById } from '@/lib/mockData';
 import { Submission } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
 
@@ -123,7 +123,16 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
             </div>
             <div>
               <p className="text-sm text-gray-600">Task:</p>
-              <p className="font-semibold text-lg">{submission.task?.title || '—'}</p>
+              <p className="font-semibold text-lg">
+                {(function() {
+                  const task = getTaskById(submission.task_id);
+                  if (task) {
+                    const question = getQuestionById(task.question_id);
+                    return question?.question_text || '—';
+                  }
+                  return '—';
+                })()}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">AI Score:</p>

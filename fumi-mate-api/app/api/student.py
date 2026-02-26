@@ -7,17 +7,19 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.task import Task, TaskQuestion
 
 student_bp = Blueprint('student', __name__)
+def get_current_user_id():
+    identity = get_jwt_identity()
+    return identity.get("id") if isinstance(identity, dict) else identity
 
-@student_bp.route("/tasks", methods=["GET", "OPTIONS"])
+@student_bp.route("/tasks", methods=["GET"]) # Bỏ OPTIONS vì CORS đã lo
 @jwt_required()
 @role_required("student")
 def get_tasks():
-    if request.method == "OPTIONS":
-        return {}, 200
-
-    user_id = get_jwt_identity()
-
-    user = User.query.get(user_id)
+    user_id = get_current_user_id()
+    
+    # Sử dụng .get() và ép kiểu int cho ID
+    user = User.query.get(int(user_id))
+    print("user",user)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
@@ -36,18 +38,14 @@ def get_tasks():
             "description": task.description,
             "difficulty": task.difficulty,
             "dueDate": task.due_date.isoformat() if task.due_date else None,
-            "createdAt": task.created_at.isoformat() if task.created_at else None,
             "isDone": submission is not None and submission.status == "submitted",
             "questions": [
                 {
                     "id": q.id,
                     "questionText": q.question_text,
                     "questionType": q.question_type,
-                    "hint": q.hint,
-                    "sampleAnswer": q.sample_answer,
-                }
-                for q in task.questions
-            ]
+                } for q in task.questions
+            ] if hasattr(task, 'questions') else []
         })
 
     return jsonify({"tasks": tasks_data}), 200
@@ -56,10 +54,8 @@ def get_tasks():
 @jwt_required()
 def get_task(task_id):
     """Get a specific task details"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
-
-    user = User.query.get(user_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
     if not user or not isinstance(user, Student):
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
@@ -101,10 +97,8 @@ def get_task(task_id):
 @jwt_required()
 def get_submissions():
     """Get all submissions for the current student"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
-
-    user = User.query.get(user_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
     if not user or not isinstance(user, Student):
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
@@ -134,10 +128,8 @@ def get_submissions():
 @jwt_required()
 def get_submission_detail(submission_id):
     """Get detailed submission with AI feedback"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
-
-    user = User.query.get(user_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
     if not user or not isinstance(user, Student):
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
@@ -180,10 +172,8 @@ def get_submission_detail(submission_id):
 @jwt_required()
 def submit_test(task_id):
     """Submit or save a test"""
-    current_user = get_jwt_identity()
-    user_id = current_user['id']
-
-    user = User.query.get(user_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
     if not user or not isinstance(user, Student):
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 

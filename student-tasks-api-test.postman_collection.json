@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "Student Tasks API Test",
+    "description": "Test collection for student tasks API endpoint",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Student Tasks",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_JWT_TOKEN_HERE",
+            "description": "Replace YOUR_JWT_TOKEN_HERE with actual JWT token from login"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/student/tasks",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "student",
+            "tasks"
+          ]
+        },
+        "description": "Get all tasks for the authenticated student. Requires JWT token from student login."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "description": "Set this variable with JWT token after login"
+    }
+  ]
+}

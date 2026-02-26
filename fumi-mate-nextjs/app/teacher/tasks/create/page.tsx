@@ -224,107 +224,88 @@ export default function CreateTaskPage() {
             </div>
           </div>
 
-          {/* Questions */}
+          {/* Question Bank Selection */}
           <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-semibold">Questions</h3>
-              <button
-                type="button"
-                onClick={addQuestion}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+            <h3 className="text-2xl font-semibold mb-4">Select Questions from Question Bank</h3>
+            
+            {/* Search and Filters */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search questions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="custom-input pl-10"
+                />
+              </div>
+              <select
+                value={genreFilter}
+                onChange={(e) => setGenreFilter(e.target.value)}
+                className="custom-select"
               >
-                <Plus className="w-4 h-4" />
-                Add Question
-              </button>
+                <option value="">All Genres</option>
+                <option value="grammar">Grammar</option>
+                <option value="vocabulary">Vocabulary</option>
+                <option value="kanji">Kanji</option>
+                <option value="reading">Reading</option>
+              </select>
+              <select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                className="custom-select"
+              >
+                <option value="">All Levels</option>
+                <option value="N5">N5</option>
+                <option value="N4">N4</option>
+                <option value="N3">N3</option>
+                <option value="N2">N2</option>
+                <option value="N1">N1</option>
+              </select>
             </div>
 
-            {questions.length === 0 ? (
-              <div className="text-center p-8 bg-gray-50 rounded-lg">
-                <p className="text-gray-500 mb-4">No questions added yet.</p>
-                <button
-                  type="button"
-                  onClick={addQuestion}
-                  className="text-primary hover:underline"
-                >
-                  Click "Add Question" to create your first question
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {questions.map((question, index) => (
-                  <div key={question.id} className="p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="font-semibold text-lg">Question {index + 1}</h4>
-                      <button
-                        type="button"
-                        onClick={() => removeQuestion(question.id)}
-                        className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
+            <p className="text-gray-600 mb-4">
+              Selected: {selectedQuestionIds.length} question(s)
+            </p>
 
-                    <div className="space-y-4">
+            {/* Question List */}
+            <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-4">
+              {loading ? (
+                <p className="text-center text-gray-500">Loading questions...</p>
+              ) : error ? (
+                <p className="text-center text-red-500">{error}</p>
+              ) : filteredQuestions.length === 0 ? (
+                <p className="text-center text-gray-500">No questions found.</p>
+              ) : (
+                filteredQuestions.map((question) => (
+                  <div
+                    key={question.id}
+                    onClick={() => toggleQuestionSelection(question.id)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedQuestionIds.includes(question.id)
+                        ? 'border-primary bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestionIds.includes(question.id)}
+                        onChange={() => toggleQuestionSelection(question.id)}
+                        className="mt-1"
+                      />
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Question Text *
-                        </label>
-                        <textarea
-                          value={question.questionText}
-                          onChange={(e) => updateQuestion(question.id, 'questionText', e.target.value)}
-                          className="custom-textarea"
-                          rows={3}
-                          placeholder="Enter the question..."
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Question Type
-                        </label>
-                        <select
-                          value={question.questionType}
-                          onChange={(e) => updateQuestion(question.id, 'questionType', e.target.value)}
-                          className="custom-select"
-                        >
-                          <option value="writing">Writing</option>
-                          <option value="kanji">Kanji</option>
-                          <option value="translation">Translation</option>
-                          <option value="essay">Essay</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Hint (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={question.hint}
-                          onChange={(e) => updateQuestion(question.id, 'hint', e.target.value)}
-                          className="custom-input"
-                          placeholder="Provide a helpful hint..."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Sample Answer (Optional)
-                        </label>
-                        <textarea
-                          value={question.sampleAnswer}
-                          onChange={(e) => updateQuestion(question.id, 'sampleAnswer', e.target.value)}
-                          className="custom-textarea"
-                          rows={2}
-                          placeholder="Provide a sample answer..."
-                        />
+                        <p className="font-semibold">{question.content}</p>
+                        <p className="text-sm text-gray-500">
+                          {question.topic} • {question.level} • {question.genre}
+                        </p>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           {/* Submit Buttons */}

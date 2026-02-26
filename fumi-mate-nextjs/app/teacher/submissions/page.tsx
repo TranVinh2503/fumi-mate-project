@@ -2,14 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockSubmissions } from '@/lib/mockData';
+import { mockSubmissions, getTaskById, getQuestionById, mockUsers } from '@/lib/mockData';
 import { Submission } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 import { Eye, CheckCircle, Clock } from 'lucide-react';
 
+interface SubmissionWithDetails extends Submission {
+  studentName?: string;
+  taskTitle?: string;
+  taskDifficulty?: string;
+}
+
 export default function TeacherSubmissionsPage() {
   const router = useRouter();
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([]);
   const [filter, setFilter] = useState<'all' | 'submitted' | 'graded'>('all');
 
   useEffect(() => {
@@ -18,23 +24,30 @@ export default function TeacherSubmissionsPage() {
     // const data = await response.json();
     // setSubmissions(data);
     
-    // Mock data
-    const allSubmissions = mockSubmissions.map(sub => ({
-      ...sub,
-      task: mockSubmissions.find(s => s.id === sub.id)?.task,
-      student: { id: sub.studentId, username: `student${sub.studentId}`, role: 'student' as const },
-    }));
+    // Mock data with details
+    const allSubmissions: SubmissionWithDetails[] = mockSubmissions.map(sub => {
+      const task = getTaskById(sub.task_id);
+      const question = task ? getQuestionById(task.question_id) : undefined;
+      const student = mockUsers.find(u => u.id === sub.student_id);
+      
+      return {
+        ...sub,
+        studentName: student?.name || sub.student_id,
+        taskTitle: question?.question_text || '—',
+        taskDifficulty: question?.difficulty_level || '—',
+      };
+    });
     setSubmissions(allSubmissions);
   }, []);
 
   const filteredSubmissions = submissions.filter(sub => {
     if (filter === 'all') return true;
-    if (filter === 'submitted') return sub.status === 'submitted' && !sub.teacherScore;
-    if (filter === 'graded') return sub.teacherScore !== undefined;
+    if (filter === 'submitted') return sub.status === 1 && !sub.teacher_score;
+    if (filter === 'graded') return sub.teacher_score !== undefined;
     return true;
   });
 
-  const handleRowClick = (submissionId: number) => {
+  const handleRowClick = (submissionId: string) => {
     router.push(`/teacher/submissions/${submissionId}`);
   };
 
@@ -63,7 +76,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          Pending ({submissions.filter(s => s.status === 'submitted' && !s.teacherScore).length})
+          Pending ({submissions.filter(s => s.status === 1 && !s.teacher_score).length})
         </button>
         <button
           onClick={() => setFilter('graded')}
@@ -74,7 +87,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          Graded ({submissions.filter(s => s.teacherScore).length})
+          Graded ({submissions.filter(s => s.teacher_score).length})
         </button>
       </div>
 
@@ -100,35 +113,35 @@ export default function TeacherSubmissionsPage() {
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 font-semibold">
-                      {sub.student?.username || `Student ${sub.studentId}`}
+                      {sub.studentName}
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-semibold text-gray-900">{sub.task?.title || '—'}</p>
-                        <p className="text-sm text-gray-500">{sub.task?.difficulty}</p>
+                        <p className="font-semibold text-gray-900">{sub.taskTitle}</p>
+                        <p className="text-sm text-gray-500">{sub.taskDifficulty}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 text-sm">
-                      {formatDateTime(sub.createdAt)}
+                      {formatDateTime(sub.submission_time || '')}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.aiScore ? (
-                        <span className="font-semibold text-blue-600">{sub.aiScore}</span>
+                      {sub.ai_score ? (
+                        <span className="font-semibold text-blue-600">{sub.ai_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.teacherScore ? (
-                        <span className="font-semibold text-green-600">{sub.teacherScore}</span>
+                      {sub.teacher_score ? (
+                        <span className="font-semibold text-green-600">{sub.teacher_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.teacherScore ? (
+                      {sub.teacher_score ? (
                         <span className="badge badge-success">Graded</span>
-                      ) : sub.status === 'submitted' ? (
+                      ) : sub.status === 1 ? (
                         <span className="badge badge-warning">Pending</span>
                       ) : (
                         <span className="badge badge-secondary">Draft</span>
@@ -136,11 +149,11 @@ export default function TeacherSubmissionsPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button
-                        onClick={() => handleRowClick(sub.id)}
+                        onClick={() => sub.id && handleRowClick(sub.id)}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors"
                       >
                         <Eye className="w-4 h-4" />
-                        {sub.teacherScore ? 'View' : 'Grade'}
+                        {sub.teacher_score ? 'View' : 'Grade'}
                       </button>
                     </td>
                   </tr>

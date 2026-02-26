@@ -83,12 +83,13 @@ def login():
     if user is None or not check_password_hash(user.password_hash, password):
         return jsonify({"message": "Invalid username or password"}), 401
 
-    access_token = create_access_token(
-        identity={
-            "id": user.id,
-            "role": user.role
-        }
-    )
+    # Điều này giúp hàm @role_required không bị lỗi "str object has no attribute get"
+    identity_data = {
+        "id": str(user.id),
+        "role": user.role
+    }
+    
+    access_token = create_access_token(identity=identity_data)
     print("LOGIN SUCCESSFUL", access_token)
     
     return jsonify({
@@ -104,7 +105,7 @@ def login():
 @jwt_required()
 def me():
     user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    user = User.query.get(int(user_id))
     return {
         "id": user.id,
         "username": user.username,

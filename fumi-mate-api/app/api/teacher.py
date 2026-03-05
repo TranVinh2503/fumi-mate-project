@@ -9,6 +9,45 @@ from app.utils.permissions import role_required
 
 teacher_bp = Blueprint('teacher', __name__)
 
+def get_current_user_id():
+    identity = get_jwt_identity()
+    return identity.get("id") if isinstance(identity, dict) else identity
+
+@teacher_bp.route('/tasks', methods=['GET'])
+@jwt_required()
+@role_required('teacher')
+def get_teacher_tasks():
+    """
+    Get all tasks created by the current teacher.
+    """
+    try:
+        user_id = get_current_user_id()
+        tasks = Task.query.filter_by(created_by=user_id).all()
+        
+        tasks_data = []
+        for task in tasks:
+            question_count = len(task.task_questions)
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description,
+                'difficulty': task.difficulty,
+                'dueDate': task.due_date.isoformat() if task.due_date else None,
+                'createdAt': task.created_at.isoformat() if task.created_at else None,
+                'isDone': task.is_done,
+                'questionCount': question_count
+            })
+        
+        return jsonify({
+            'success': True,
+            'tasks': tasks_data,
+            'total': len(tasks_data)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching teacher tasks: {e}")
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
 @teacher_bp.route('/tasks', methods=['POST'])
 @jwt_required()
 @role_required('teacher')
@@ -24,8 +63,7 @@ def create_task():
     }
     """
     try:
-        current_user = get_jwt_identity()
-        user_id = current_user['id']
+        user_id = get_current_user_id()
 
         data = request.get_json()
         if not data:
@@ -70,7 +108,7 @@ def create_task():
         )
 
         db.session.add(new_task)
-        db.session.flush()  # Get the task ID
+        db.session.flush()
 
         # Create TaskQuestion relationships
         for order, qid in enumerate(question_bank_ids, 1):

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 
@@ -21,7 +22,7 @@ export default function TeacherTasksPage() {
 
     const fetchTasks = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/student/tasks', {
+        const res = await fetch(API_ENDPOINTS.TEACHER_TASKS, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'

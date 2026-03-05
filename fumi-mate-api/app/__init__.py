@@ -24,11 +24,21 @@ def create_app():
     # ===== EXTENSIONS =====
     db.init_app(app)
     jwt.init_app(app)
-    migrate.init_app(app, db)  # 🔥 THIS IS REQUIRED
+    migrate.init_app(app, db)
+
+    # ===== JWT CUSTOM CALLBACK =====
+    @jwt.user_identity_loader
+    def user_identity_lookup(user):
+        return {"id": str(user.id), "role": user.role}
+    
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        from app.models.user import User
+        return User.query.filter_by(id=int(identity["id"])).one_or_none()
 
 
     # ===== CORS =====
-    # Configure CORS to allow localhost:3000 with credentials
     CORS(app, resources={
         r"/api/*": {
             "origins": ["http://localhost:3000"],

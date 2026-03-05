@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Submission } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 
 type Task = {
   id: number;
@@ -42,7 +43,7 @@ export default function StudentTasksPage() {
 
     const fetchTasks = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/student/tasks', {
+        const res = await fetch(API_ENDPOINTS.STUDENT_TASKS, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',

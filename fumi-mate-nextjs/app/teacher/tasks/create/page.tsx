@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Search } from 'lucide-react';
-
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 interface QuestionBankItem {
   id: number;
   genre: string;
@@ -43,7 +43,7 @@ export default function CreateTaskPage() {
           return;
         }
 
-        const res = await fetch('/api/task/questions', {
+        const res = await fetch(API_ENDPOINTS.QUESTION_QUERY, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ export default function CreateTaskPage() {
         questionBankIds: selectedQuestionIds
       };
 
-      const response = await fetch('/api/teacher/tasks', {
+      const response = await fetch(API_ENDPOINTS.TEACHER_CREATE_TASK, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -16,22 +16,43 @@ export default function TeacherTaskDetailPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     if (!taskId) return;
 
-    // TODO: Fetch task details from Flask API
-    // const response = await fetch(`/api/teacher/tasks/${taskId}`);
-    // const data = await response.json();
-    // setTask(data.task);
-    // setSubmissions(data.submissions);
+    const fetchTaskDetails = async () => {
+      try {
+        setLoading(true); 
 
-    // Mock data
-    const taskData = getTaskById(taskId);
-    const submissionsData = getSubmissionsForTask(taskId);
+        // 1. Fetch task details from Flask API
+        const response = await fetch(`/api/teacher/tasks/${taskId}`);
+        
+        // Kiểm tra nếu API trả về lỗi (ví dụ 404, 500)
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setTask(data.task);
+        setSubmissions(data.submissions);
 
-    setTask(taskData || null);
-    setSubmissions(submissionsData);
-    setLoading(false);
+        /* * Lưu ý: Đoạn Mock data bên dưới sẽ ghi đè lên dữ liệu từ API ở trên. 
+         * Bạn nên comment lại nếu API đã hoạt động, hoặc dùng if/else để chuyển đổi 
+         * giữa chế độ dùng API thật và Mock data.
+         */
+        // const taskData = getTaskById(taskId);
+        // const submissionsData = getSubmissionsForTask(taskId);
+        // setTask(taskData || null);
+        // setSubmissions(submissionsData);
+
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
+      } finally {
+        setLoading(false); // Đảm bảo luôn tắt trạng thái loading dù thành công hay thất bại
+      }
+    };
+
+    // Gọi hàm vừa khởi tạo
+    fetchTaskDetails();
   }, [taskId]);
 
   if (loading) {

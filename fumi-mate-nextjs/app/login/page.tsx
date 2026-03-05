@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/api/auth/login", {
+    const res = await fetch(API_ENDPOINTS.LOGIN, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

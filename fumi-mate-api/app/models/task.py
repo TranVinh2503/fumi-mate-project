@@ -12,6 +12,9 @@ class Task(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_done = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # JSON column to store assigned student IDs (null means visible to all students)
+    assigned_students = db.Column(db.Text, nullable=True)  # Stored as JSON string like "[1,2,3]"
 
     # Quan hệ với bảng trung gian TaskQuestion
     task_questions = db.relationship('TaskQuestion', back_populates='task', lazy=True, cascade="all, delete-orphan")

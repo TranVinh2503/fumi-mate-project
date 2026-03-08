@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getTaskById, getQuestionById, getSubmissionsForTask } from '@/lib/mockData';
 import { Task, Submission } from '@/lib/types';
 import { ArrowLeft, Users, FileText, Calendar, Edit } from 'lucide-react';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 
 export default function TeacherTaskDetailPage() {
   const params = useParams();
@@ -19,12 +20,19 @@ export default function TeacherTaskDetailPage() {
 useEffect(() => {
     if (!taskId) return;
 
-    const fetchTaskDetails = async () => {
+const fetchTaskDetails = async () => {
       try {
         setLoading(true); 
 
+        const token = localStorage.getItem('access_token');
+        
         // 1. Fetch task details from Flask API
-        const response = await fetch(`/api/teacher/tasks/${taskId}`);
+        const response = await fetch(API_ENDPOINTS.TEACHER_TASK_DETAIL(Number(taskId)), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
         
         // Kiểm tra nếu API trả về lỗi (ví dụ 404, 500)
         if (!response.ok) {
@@ -33,7 +41,7 @@ useEffect(() => {
         
         const data = await response.json();
         setTask(data.task);
-        setSubmissions(data.submissions);
+        // Note: submissions are not yet included in the API response
 
         /* * Lưu ý: Đoạn Mock data bên dưới sẽ ghi đè lên dữ liệu từ API ở trên. 
          * Bạn nên comment lại nếu API đã hoạt động, hoặc dùng if/else để chuyển đổi 

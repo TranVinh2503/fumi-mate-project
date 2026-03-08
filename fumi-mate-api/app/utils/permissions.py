@@ -1,11 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from flask_jwt_extended import get_jwt_identity
-
-# app/utils/permissions.py
-from functools import wraps
-from flask import request, jsonify
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
 
 def role_required(role):
     def decorator(f):
@@ -13,22 +8,29 @@ def role_required(role):
         def wrapper(*args, **kwargs):
             if request.method == "OPTIONS":
                 return "", 200
-
-            identity = get_jwt_identity()
             
-            # Lấy user_role an toàn từ Dictionary
-            user_role = None
-            if isinstance(identity, dict):
-                user_role = identity.get("role")
-            else:
-                user_role = identity # Trường hợp identity chỉ là string (token cũ)
+            try:
+                # Check Authorization header
+                auth_header = request.headers.get('Authorization')
+                print(f"DEBUG AUTH HEADER: {auth_header}")
+                
+                verify_jwt_in_request()
+                
+                claims = get_jwt()
+                user_role = claims.get("role")
+                user_identity = get_jwt_identity()
+                
+                print(f"DEBUG CHECK QUYỀN: Yêu cầu quyền [{role}], User identity: {user_identity}, User đang có quyền [{user_role}]")
 
-            # In ra để debug (Xem ở terminal backend)
-            print(f"DEBUG: Required role: {role}, User role: {user_role}")
+                if str(user_role).strip().lower() != str(role).strip().lower():
+                    return jsonify({"error": f"Permission denied. Required: {role}, got: {user_role}"}), 403
 
-            if str(user_role).strip().lower() != str(role).strip().lower():
-                return jsonify({"error": f"Permission denied. Required: {role}, got: {user_role}"}), 403
+                return f(*args, **kwargs)
+            except Exception as e:
+                print(f"DEBUG JWT ERROR: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({"error": "Lỗi xác thực Token: " + str(e)}), 401
 
-            return f(*args, **kwargs)
         return wrapper
     return decorator

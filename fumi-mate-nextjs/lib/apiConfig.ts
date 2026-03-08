@@ -12,14 +12,16 @@ export const API_ENDPOINTS = {
   
   // Student
   STUDENT_TASKS: `${API_BASE_URL}/api/student/tasks`,
+  STUDENT_TASK_DETAIL: (taskId: string) => `${API_BASE_URL}/api/student/tasks/${taskId}`,
   STUDENT_SUBMIT_TEST: (taskId: number) => `${API_BASE_URL}/api/student/submit-test/${taskId}`,
   STUDENT_SUBMISSIONS: `${API_BASE_URL}/api/student/submissions`,
   
-  // Teacher
+// Teacher
   TEACHER_TASKS: `${API_BASE_URL}/api/teacher/tasks`,
   TEACHER_CREATE_TASK: `${API_BASE_URL}/api/teacher/tasks`,
   TEACHER_STUDENTS: `${API_BASE_URL}/api/teacher/students`,
   TEACHER_SUBMISSIONS: `${API_BASE_URL}/api/teacher/submissions`,
+  TEACHER_TASK_DETAIL: (taskId: number) => `${API_BASE_URL}/api/teacher/tasks/${taskId}`,
 
   //question
   QUESTION_QUERY: `${API_BASE_URL}/api/task/questions`

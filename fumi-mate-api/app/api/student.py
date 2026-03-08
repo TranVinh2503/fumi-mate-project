@@ -5,6 +5,9 @@ from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.task import Task, TaskQuestion
+from app.models import User, StudentProfile, Submission
+from app.extensions import db
+import json
 
 student_bp = Blueprint('student', __name__)
 def get_current_user_id():
@@ -32,6 +35,9 @@ def get_tasks():
             student_id=user_id
         ).first()
 
+        # Get questions from task_questions relationship
+        questions = [tq.question_bank for tq in sorted(task.task_questions, key=lambda x: x.order)]
+
         tasks_data.append({
             "id": task.id,
             "title": task.title,
@@ -42,22 +48,20 @@ def get_tasks():
             "questions": [
                 {
                     "id": q.id,
-                    "questionText": q.question_text,
-                    "questionType": q.question_type,
-                } for q in task.questions
-            ] if hasattr(task, 'questions') else []
+                    "questionText": q.content,
+                    "questionType": q.genre,
+                } for q in questions
+            ]
         })
 
     return jsonify({"tasks": tasks_data}), 200
 
 @student_bp.route('/tasks/<int:task_id>', methods=['GET'])
 @jwt_required()
+@role_required("student")
 def get_task(task_id):
     """Get a specific task details"""
-    user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
-    if not user or not isinstance(user, Student):
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
+    user_id = get_current_user_id()
 
     task = Task.query.get(task_id)
     if not task:
@@ -65,6 +69,9 @@ def get_task(task_id):
 
     # Get existing submission if any
     submission = Submission.query.filter_by(task_id=task.id, student_id=user_id).first()
+
+    # Get questions from task_questions relationship
+    questions = [tq.question_bank for tq in sorted(task.task_questions, key=lambda x: x.order)]
 
     task_data = {
         'id': task.id,
@@ -76,12 +83,12 @@ def get_task(task_id):
         'questions': [
             {
                 'id': q.id,
-                'questionText': q.question_text,
-                'questionType': q.question_type,
-                'hint': q.hint,
-                'sampleAnswer': q.sample_answer
-            } for q in task.questions
-        ] if task.questions else [],
+                'questionText': q.content,
+                'questionType': q.genre,
+                'hint': q.topic,
+                'sampleAnswer': None
+            } for q in questions
+        ],
         'submission': {
             'id': submission.id,
             'content': submission.content,
@@ -99,7 +106,7 @@ def get_submissions():
     """Get all submissions for the current student"""
     user_id = get_jwt_identity()
     user = User.query.get(int(user_id))
-    if not user or not isinstance(user, Student):
+    if not user or user.role != 'student':
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
     submissions = Submission.query.filter_by(student_id=user_id).all()
@@ -130,7 +137,7 @@ def get_submission_detail(submission_id):
     """Get detailed submission with AI feedback"""
     user_id = get_jwt_identity()
     user = User.query.get(int(user_id))
-    if not user or not isinstance(user, Student):
+    if not user or user.role != 'student':
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
     submission = Submission.query.get(submission_id)
@@ -174,7 +181,7 @@ def submit_test(task_id):
     """Submit or save a test"""
     user_id = get_jwt_identity()
     user = User.query.get(int(user_id))
-    if not user or not isinstance(user, Student):
+    if not user or user.role != 'student':
         return jsonify({'error': 'Unauthorized. Student access required.'}), 403
 
     data = request.get_json()

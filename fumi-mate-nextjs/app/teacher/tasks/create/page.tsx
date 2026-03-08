@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, Users } from 'lucide-react';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
+
 interface QuestionBankItem {
   id: number;
   genre: string;
@@ -12,6 +13,13 @@ interface QuestionBankItem {
   content: string;
   level: string;
   required_points: string;
+}
+
+interface StudentItem {
+  id: number;
+  username: string;
+  jlpt_level: string | null;
+  total_points: number;
 }
 
 export default function CreateTaskPage() {
@@ -32,9 +40,15 @@ export default function CreateTaskPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch question bank on component mount
+  // Student selection state
+  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [assignToAll, setAssignToAll] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Fetch question bank and students on component mount
   useEffect(() => {
-    const fetchQuestionBank = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem('access_token');
         if (!token) {
@@ -43,29 +57,45 @@ export default function CreateTaskPage() {
           return;
         }
 
-        const res = await fetch(API_ENDPOINTS.QUESTION_QUERY, {
+        // Fetch questions
+        const questionsRes = await fetch(API_ENDPOINTS.QUESTION_QUERY, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
-        if (!res.ok) {
+        if (!questionsRes.ok) {
           throw new Error('Failed to fetch questions');
         }
 
-        const data = await res.json();
-        setQuestionBank(data.questions);
-        setFilteredQuestions(data.questions);
+        const questionsData = await questionsRes.json();
+        setQuestionBank(questionsData.questions);
+        setFilteredQuestions(questionsData.questions);
+
+        // Fetch students
+        setLoadingStudents(true);
+        const studentsRes = await fetch(API_ENDPOINTS.TEACHER_STUDENTS, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (studentsRes.ok) {
+          const studentsData = await studentsRes.json();
+          setStudents(studentsData.students || []);
+        }
       } catch (err: any) {
         console.error(err);
         setError(err.message);
       } finally {
         setLoading(false);
+        setLoadingStudents(false);
       }
     };
 
-    fetchQuestionBank();
+    fetchData();
   }, []);
 
   // Filter questions based on search and filters
@@ -101,8 +131,13 @@ export default function CreateTaskPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (selectedQuestionIds.length === 0) {
+if (selectedQuestionIds.length === 0) {
       setMessage('Please select at least one question.');
+      return;
+    }
+
+    if (!assignToAll && selectedStudentIds.length === 0) {
+      setMessage('Please select at least one student or check "Assign to all students".');
       return;
     }
 
@@ -113,12 +148,13 @@ export default function CreateTaskPage() {
         return;
       }
 
-      const payload = {
+const payload = {
         title: formData.title,
         description: formData.description,
         difficulty: formData.difficulty,
         dueDate: formData.dueDate || null,
-        questionBankIds: selectedQuestionIds
+        questionBankIds: selectedQuestionIds,
+        studentIds: assignToAll ? [] : selectedStudentIds
       };
 
       const response = await fetch(API_ENDPOINTS.TEACHER_CREATE_TASK, {
@@ -269,7 +305,7 @@ export default function CreateTaskPage() {
               Selected: {selectedQuestionIds.length} question(s)
             </p>
 
-            {/* Question List */}
+{/* Question List */}
             <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-4">
               {loading ? (
                 <p className="text-center text-gray-500">Loading questions...</p>
@@ -306,6 +342,89 @@ export default function CreateTaskPage() {
                 ))
               )}
             </div>
+          </div>
+
+          {/* Student Assignment */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-6 h-6" />
+              Assign to Students
+            </h3>
+            
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={assignToAll}
+                  onChange={(e) => {
+                    setAssignToAll(e.target.checked);
+                    if (e.target.checked) {
+                      setSelectedStudentIds([]);
+                    }
+                  }}
+                  className="w-5 h-5 text-primary"
+                />
+                <span className="font-medium">Assign to all students</span>
+              </label>
+              <p className="text-sm text-gray-500 mt-1 ml-8">
+                If checked, all students can see this task. If not, select specific students below.
+              </p>
+            </div>
+
+            {!assignToAll && (
+              <div>
+                <p className="text-gray-600 mb-4">
+                  Selected: {selectedStudentIds.length} student(s)
+                </p>
+                
+                {loadingStudents ? (
+                  <p className="text-center text-gray-500">Loading students...</p>
+                ) : students.length === 0 ? (
+                  <p className="text-center text-gray-500">No students found.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-4">
+                    {students.map((student) => (
+                      <div
+                        key={student.id}
+                        onClick={() => {
+                          setSelectedStudentIds(prev =>
+                            prev.includes(student.id)
+                              ? prev.filter(id => id !== student.id)
+                              : [...prev, student.id]
+                          );
+                        }}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          selectedStudentIds.includes(student.id)
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.includes(student.id)}
+                            onChange={() => {
+                              setSelectedStudentIds(prev =>
+                                prev.includes(student.id)
+                                  ? prev.filter(id => id !== student.id)
+                                  : [...prev, student.id]
+                              );
+                            }}
+                            className="mt-1"
+                          />
+                          <div>
+                            <p className="font-semibold">{student.username}</p>
+                            <p className="text-sm text-gray-500">
+                              JLPT Level: {student.jlpt_level || 'N/A'} • Points: {student.total_points}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Submit Buttons */}

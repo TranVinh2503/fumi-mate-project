@@ -29,13 +29,21 @@ def create_app():
     # ===== JWT CUSTOM CALLBACK =====
     @jwt.user_identity_loader
     def user_identity_lookup(user):
-        return {"id": str(user.id), "role": user.role}
+        print("--- [DEBUG] TẠO TOKEN CHO USER_ID:", user.id)
+        # BẮT BUỘC CHỈ TRẢ VỀ STRING ĐỂ KHÔNG BỊ LỖI 422
+        return str(user.id) 
+    
+    # THÊM HÀM NÀY ĐỂ LƯU ROLE TRONG TOKEN
+    @jwt.additional_claims_loader
+    def add_claims_to_access_token(user):
+        return {"role": user.role}
     
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
         identity = jwt_data["sub"]
+        print("--- [DEBUG] CALL API: GIẢI MÃ TOKEN ID LÀ:", identity)
         from app.models.user import User
-        return User.query.filter_by(id=int(identity["id"])).one_or_none()
+        return User.query.get(int(identity))
 
 
     # ===== CORS =====

@@ -101,6 +101,7 @@ def seed_users():
 def seed_tasks(teacher):
     print("📘 Seeding tasks...")
 
+    # Task 1: Visible to all students (assigned_students = None)
     task1 = Task(
         title="自己紹介作文",
         description="日本語で200字以内の自己紹介を書いてください。",
@@ -108,9 +109,11 @@ def seed_tasks(teacher):
         due_date=datetime.utcnow() + timedelta(days=7),
         created_by=teacher.id,
         created_at=datetime.utcnow(),
-        is_done=False
+        is_done=False,
+        assigned_students=None  # Visible to all students
     )
 
+    # Task 2: Visible to all students
     task2 = Task(
         title="意見文：アルバイトについて",
         description="アルバイトのメリット・デメリットについて意見を書いてください。",
@@ -118,7 +121,8 @@ def seed_tasks(teacher):
         due_date=datetime.utcnow() + timedelta(days=10),
         created_by=teacher.id,
         created_at=datetime.utcnow(),
-        is_done=False
+        is_done=False,
+        assigned_students=None  # Visible to all students
     )
 
     db.session.add_all([task1, task2])
@@ -126,71 +130,6 @@ def seed_tasks(teacher):
 
     return task1, task2
 
-
-# def seed_questions(task1, task2):
-#     print("❓ Seeding questions...")
-
-#     q1 = Question(
-#         task_id=task1.id,
-#         question_text="あなたの名前、専攻、趣味を書いてください。",
-#         question_type="writing",
-#         hint="簡単な文でOKです。",
-#         sample_answer="はじめまして。私は花です。ITを勉強しています。"
-#     )
-
-#     q2 = Question(
-#         task_id=task2.id,
-#         question_text="アルバイトは学生にとって必要だと思いますか？理由も書いてください。",
-#         question_type="essay",
-#         hint="〜と思います、〜だと思います を使いましょう。",
-#         sample_answer="アルバイトは社会経験になるので必要だと思います。"
-#     )
-
-#     db.session.add_all([q1, q2])
-#     db.session.commit()
-
-
-# def seed_submissions(task1, student1):
-#     print("📝 Seeding submissions...")
-
-#     submission = Submission(
-#         task_id=task1.id,
-#         student_id=student1.id,
-#         content="はじめまして。私は花です。大学で情報技術を勉強しています。趣味は読書です。",
-#         ai_feedback="文法は正確ですが、もう少し詳しく書くと良いです。",
-#         ai_score=8.5,
-#         teacher_feedback="とても良い自己紹介です。次は理由も書いてみましょう。",
-#         teacher_score=9.0,
-#         status="reviewed",
-#         created_at=datetime.utcnow(),
-#         updated_at=datetime.utcnow()
-#     )
-
-#     db.session.add(submission)
-#     db.session.commit()
-
-#     return submission
-
-
-# def seed_feedback(submission):
-#     print("💬 Seeding feedback...")
-
-#     fb1 = Feedback(
-#         submission_id=submission.id,
-#         agent_name="AI",
-#         result="文法エラーはありません。語彙を増やすとさらに良くなります。",
-#         created_at=datetime.utcnow()
-#     )
-
-#     fb2 = Feedback(
-#         submission_id=submission.id,
-#         agent_name="Teacher",
-#         result="自然な日本語です。とても読みやすいです。",
-#         created_at=datetime.utcnow()
-#     )
-
-#     db.session.add_all([fb1, fb2])
-#     db.session.commit()
 
 
 def seed_question_bank():
@@ -234,32 +173,30 @@ def run_seed():
         db.drop_all()
         db.create_all()
 
-        # 1. Chạy seed user cũ của bạn
+        # 1. Chạy seed users
         teacher, student1, student2 = seed_users()
         
-        # 2. Chạy seed QuestionBank mới (Dữ liệu từ file Word)
+        # 2. Chạy seed QuestionBank
         qb_items = seed_question_bank()
 
-        # 3. Tạo Task liên kết (Sử dụng Model mới TaskQuestion)
-        # Lấy câu hỏi đầu tiên trong ngân hàng để giao bài tập
-        new_task = Task(
-            title=f"Bài tập: {qb_items[0].topic}",
-            description="Hãy hoàn thành bài viết theo yêu cầu.",
-            difficulty=qb_items[0].level,
-            created_by=teacher.id,
-            due_date=datetime.utcnow() + timedelta(days=7)
-        )
-        db.session.add(new_task)
-        db.session.commit()
+        # 3. Chạy seed tasks (tạo 2 task mẫu)
+        task1, task2 = seed_tasks(teacher)
 
-        # Nối Task với QuestionBank qua bảng trung gian
-        tq = TaskQuestion(task_id=new_task.id, question_bank_id=qb_items[0].id, order=1)
-        db.session.add(tq)
+        # 4. Tạo Task liên kết với QuestionBank qua bảng trung gian TaskQuestion
+        # Gán câu hỏi đầu tiên cho task1
+        tq1 = TaskQuestion(task_id=task1.id, question_bank_id=qb_items[0].id, order=1)
+        db.session.add(tq1)
+
+        # Gán câu hỏi thứ 2 cho task2 (nếu có)
+        if len(qb_items) > 1:
+            tq2 = TaskQuestion(task_id=task2.id, question_bank_id=qb_items[1].id, order=1)
+            db.session.add(tq2)
         
-        # 4. Tạo Submission mẫu và Feedback theo Rubric mới
-        # (Sử dụng Model DetailedFeedback thay vì Feedback cũ)
+        db.session.commit()
+        
+        # 5. Tạo Submission mẫu và DetailedFeedback
         sub = Submission(
-            task_id=new_task.id, 
+            task_id=task1.id, 
             student_id=student1.id,
             content="Bài làm mẫu của sinh viên...",
             version=1,

@@ -18,8 +18,6 @@ def create_app():
 
     # ===== CONFIG =====
     app.config.from_object(Config)
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-    app.config["JWT_TOKEN_LOCATION"] = ["headers"]
 
     # ===== EXTENSIONS =====
     db.init_app(app)

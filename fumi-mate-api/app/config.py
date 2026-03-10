@@ -10,7 +10,7 @@ class Config:
     # ===== JWT =====
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
     JWT_TOKEN_LOCATION = ["headers"]
-    JWT_ACCESS_TOKEN_EXPIRES = 60 * 60 * 24  # 1 day
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", 60 * 60 * 24))  # 1 day
 
     # ===== DATABASE =====
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")

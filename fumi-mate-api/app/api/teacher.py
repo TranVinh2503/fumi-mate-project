@@ -209,9 +209,17 @@ def get_task_detail(task_id):
             questions_data.append({
                 'id': q.id,
                 'content': q.content,
-                'topic': q.topic,
-                'level': q.level,
-                'genre': q.genre
+                'subGenre': {
+                    'id': q.sub_genre_id,
+                    'nameJp': q.sub_genre.name_jp,
+                    'nameVn': q.sub_genre.name_vn
+                },
+                'subTopic': {
+                    'id': q.sub_topic_id,
+                    'nameJp': q.sub_topic.name_jp,
+                    'nameVn': q.sub_topic.name_vn
+                },
+                'level': q.level
             })
         
         # Parse assigned students

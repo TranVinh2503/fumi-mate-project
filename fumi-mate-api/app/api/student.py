@@ -49,7 +49,8 @@ def get_tasks():
                 {
                     "id": q.id,
                     "questionText": q.content,
-                    "questionType": q.genre,
+                    "questionType": q.sub_genre.name_jp,
+                    "hint": q.sub_topic.name_jp,
                 } for q in questions
             ]
         })
@@ -84,8 +85,8 @@ def get_task(task_id):
             {
                 'id': q.id,
                 'questionText': q.content,
-                'questionType': q.genre,
-                'hint': q.topic,
+                'questionType': q.sub_genre.name_jp,
+                'hint': q.sub_topic.name_jp,
                 'sampleAnswer': None
             } for q in questions
         ],

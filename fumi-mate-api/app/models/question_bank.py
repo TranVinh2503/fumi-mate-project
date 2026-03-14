@@ -1,19 +1,20 @@
 from ..extensions import db
-from sqlalchemy import Enum
 
 class QuestionBank(db.Model):
     __tablename__ = 'question_bank'
 
     id = db.Column(db.Integer, primary_key=True)
-    genre = db.Column(Enum('手紙', 'スピーチ', '意見・感想', name='genre_enum'), nullable=False)
-    topic = db.Column(db.String(255), nullable=False)
-    content = db.Column(db.Text, nullable=False)  # The prompt
-    level = db.Column(Enum('N3', 'N2', name='level_enum'), nullable=False)
-    required_points = db.Column(db.Text, nullable=False)  # JSON list of mandatory ideas
-    similarity_hash = db.Column(db.String(64), unique=True, nullable=False)  # For deduplication
+    sub_genre_id = db.Column(db.Integer, db.ForeignKey('genres.id'), nullable=False)
+    sub_topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    required_points = db.Column(db.Text, nullable=False)
+    level = db.Column(db.Integer, nullable=False)  # 1-5 mapping e.g. N5=1, N1=5
+    similarity_hash = db.Column(db.String(64), unique=True, nullable=False)
 
-    # Relationship to TaskQuestion (many-to-many with Task)
+    # Relationships
+    sub_genre = db.relationship('Genre', back_populates='questions')
+    sub_topic = db.relationship('Topic', back_populates='questions')
     task_questions = db.relationship('TaskQuestion', back_populates='question_bank', lazy=True)
 
     def __repr__(self):
-        return f'<QuestionBank {self.id} ({self.genre}, {self.level})>'
+        return f'<QuestionBank {self.id} (Genre:{self.sub_genre_id}, Topic:{self.sub_topic_id}, Level:{self.level})>'

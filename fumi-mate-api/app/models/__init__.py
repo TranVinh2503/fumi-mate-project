@@ -6,3 +6,5 @@ from .submission import Submission
 from .feedback import Feedback
 from .question_bank import QuestionBank
 from .detailed_feedback import DetailedFeedback
+from .genres import Genre
+from .topics import Topic

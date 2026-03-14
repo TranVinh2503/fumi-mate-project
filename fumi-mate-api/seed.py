@@ -12,6 +12,8 @@ from app.models.feedback import Feedback
 from app.models.question_bank import QuestionBank
 from app.models.task import Task, TaskQuestion
 from app.models.detailed_feedback import DetailedFeedback
+from app.models.genres import Genre
+from app.models.topics import Topic
 import json
 
 from sqlalchemy import create_engine, text
@@ -132,21 +134,42 @@ def seed_tasks(teacher):
 
 
 
+def seed_genres():
+    print("📚 Seeding Genres...")
+    genres_data = [
+        Genre(id=1, parent_id=0, name_jp='手紙', name_vn='Thư'),
+        Genre(id=2, parent_id=0, name_jp='スピーチ', name_vn='Bài phát biểu'),
+        Genre(id=3, parent_id=0, name_jp='意見・感想', name_vn='Ý kiến - Cảm nhận'),
+    ]
+    for g in genres_data:
+        db.session.merge(g)
+    db.session.commit()
+
+def seed_topics():
+    print("📚 Seeding Topics...")
+    topics_data = [
+        Topic(id=1, parent_id=0, name_jp='Host Family', name_vn='Gia đình chủ nhà'),
+        Topic(id=2, parent_id=0, name_jp='Student Stress', name_vn='Căng thẳng học sinh'),
+    ]
+    for t in topics_data:
+        db.session.merge(t)
+    db.session.commit()
+
 def seed_question_bank():
     print("📚 Seeding Question Bank from Curriculum...")
     data = [
         {
-            "genre": "手紙",
-            "topic": "Host Family",
+            "sub_genre_id": 1,  # 手紙
+            "sub_topic_id": 1,  # Host Family
             "content": "日本で１週間ホームステイをしました。お世話になったホストファミリーに手紙を書きなさい。楽しかった思い出を２つ以上書いて、感謝の気持ちと、また会いたい気持ちを伝えてください。",
-            "level": "N3",
+            "level": 3,  # N3
             "required_points": ["感謝", "思い出2つ", "再会"]
         },
         {
-            "genre": "意見・感想",
-            "topic": "Student Stress",
+            "sub_genre_id": 3,  # 意見・感想
+            "sub_topic_id": 2,  # Student Stress
             "content": "現代の学生が抱えているストレスについて、あなたの考えを書きなさい。どんなストレスがあるのか、具体的な例をあげて説明し、その原因と、ストレスをへらすために学生ができることについても書きましょう。",
-            "level": "N2",
+            "level": 2,  # N2
             "required_points": ["ストレスの例", "原因", "対策"]
         }
     ]
@@ -155,8 +178,11 @@ def seed_question_bank():
     for item in data:
         h = hashlib.md5(item['content'].encode()).hexdigest()
         qb = QuestionBank(
-            genre=item['genre'], topic=item['topic'], content=item['content'],
-            level=item['level'], required_points=json.dumps(item['required_points']),
+            sub_genre_id=item['sub_genre_id'],
+            sub_topic_id=item['sub_topic_id'],
+            content=item['content'],
+            level=item['level'],
+            required_points=json.dumps(item['required_points']),
             similarity_hash=h
         )
         qb_list.append(qb)
@@ -176,13 +202,17 @@ def run_seed():
         # 1. Chạy seed users
         teacher, student1, student2 = seed_users()
         
-        # 2. Chạy seed QuestionBank
+# 2. Seed genres and topics
+        seed_genres()
+        seed_topics()
+        
+        # 3. Chạy seed QuestionBank
         qb_items = seed_question_bank()
 
-        # 3. Chạy seed tasks (tạo 2 task mẫu)
+        # 4. Chạy seed tasks (tạo 2 task mẫu)
         task1, task2 = seed_tasks(teacher)
 
-        # 4. Tạo Task liên kết với QuestionBank qua bảng trung gian TaskQuestion
+        # 5. Tạo Task liên kết với QuestionBank qua bảng trung gian TaskQuestion
         # Gán câu hỏi đầu tiên cho task1
         tq1 = TaskQuestion(task_id=task1.id, question_bank_id=qb_items[0].id, order=1)
         db.session.add(tq1)

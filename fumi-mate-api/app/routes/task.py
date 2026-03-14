@@ -46,7 +46,7 @@ def generate():
 def generate_question():
     """
     Generate a single question and save to QuestionBank using Gemini AI.
-    Request body: {"genre": "手紙|スピーチ|意見・感想", "topic": "string", "level": "N3|N2"}
+    Request body: {"sub_genre_id": int, "sub_topic_id": int, "level": int}
     """
     try:
         data = request.get_json()
@@ -54,36 +54,35 @@ def generate_question():
         if not data:
             return jsonify({'error': 'No JSON data provided'}), 400
 
-        genre = data.get('genre')
-        topic = data.get('topic')
+        sub_genre_id = data.get('sub_genre_id')
+        sub_topic_id = data.get('sub_topic_id')
         level = data.get('level')
 
         # Validate required fields
-        if not all([genre, topic, level]):
-            return jsonify({'error': 'Missing required fields: genre, topic, level'}), 400
+        if not all([sub_genre_id, sub_topic_id, level]):
+            return jsonify({'error': 'Missing required fields: sub_genre_id, sub_topic_id, level'}), 400
 
-        # Validate genre
-        valid_genres = ['手紙', 'スピーチ', '意見・感想']
-        if genre not in valid_genres:
-            return jsonify({
-                'error': f'Invalid genre. Must be one of: {", ".join(valid_genres)}'
-            }), 400
+        # Validate existence
+        genre = Genre.query.get(sub_genre_id)
+        topic = Topic.query.get(sub_topic_id)
+        if not genre or not topic:
+            return jsonify({'error': 'Invalid sub_genre_id or sub_topic_id'}), 400
 
-        # Validate level
-        valid_levels = ['N3', 'N2']
-        if level not in valid_levels:
-            return jsonify({
-                'error': f'Invalid level. Must be one of: {", ".join(valid_levels)}'
-            }), 400
+        if not isinstance(level, int) or level < 1 or level > 5:
+            return jsonify({'error': 'Level must be integer 1-5'}), 400
 
-        # Generate question using Gemini
-        print(f"🔄 Generating question: genre={genre}, topic={topic}, level={level}")
-        question_data = generate_single_question(genre, topic, level)
+        # Get names for Gemini prompt
+        genre_name = genre.name_jp
+        topic_name = topic.name_jp
+        level_str = f"N{5-level+1}"  # 1→N5, 2→N4, ..., 5→N1
+
+        print(f"🔄 Generating question: genre={genre_name}, topic={topic_name}, level={level}")
+        question_data = generate_single_question(genre_name, topic_name, level_str)
 
         # Create QuestionBank entry
         new_question = QuestionBank(
-            genre=genre,
-            topic=topic,
+            sub_genre_id=sub_genre_id,
+            sub_topic_id=sub_topic_id,
             content=question_data['content'],
             level=level,
             required_points=question_data['required_points'],
@@ -97,36 +96,36 @@ def generate_question():
             print(f"✅ Question saved to database with ID: {new_question.id}")
         except IntegrityError as e:
             db.session.rollback()
-            # Check if it's a duplicate hash error
             if 'similarity_hash' in str(e):
                 return jsonify({
-                    'error': 'A similar question already exists in the database',
-                    'details': 'This question appears to be a duplicate based on content similarity'
+                    'error': 'A similar question already exists'
                 }), 409
-            else:
-                raise e
+            raise e
 
-        # Return the saved question
         return jsonify({
             'success': True,
-            'message': 'Question generated and saved successfully',
             'question': {
                 'id': new_question.id,
-                'genre': new_question.genre,
-                'topic': new_question.topic,
+                'subGenre': {
+                    'id': genre.id,
+                    'nameJp': genre.name_jp,
+                    'nameVn': genre.name_vn
+                },
+                'subTopic': {
+                    'id': topic.id,
+                    'nameJp': topic.name_jp,
+                    'nameVn': topic.name_vn
+                },
                 'content': new_question.content,
                 'level': new_question.level,
                 'required_points': new_question.required_points,
-                'similarity_hash': new_question.similarity_hash
             }
         }), 201
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error in generate-question endpoint: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+        print(f"❌ Error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @task_bp.route('/questions', methods=['GET'])
 @jwt_required()

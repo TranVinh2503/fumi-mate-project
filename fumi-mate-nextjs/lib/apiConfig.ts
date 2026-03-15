@@ -3,7 +3,7 @@
 
 // For Next.js frontend to call Flask backend
 // In production, you might want to use environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const API_ENDPOINTS = {
   // Auth

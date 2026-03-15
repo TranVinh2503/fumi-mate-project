@@ -8,10 +8,18 @@ import { API_ENDPOINTS } from '@/lib/apiConfig';
 
 interface QuestionBankItem {
   id: number;
-  genre: string;
-  topic: string;
+  subGenre?: {
+    id: number;
+    nameJp: string;
+    nameVn: string;
+  };
+  subTopic?: {
+    id: number;
+    nameJp: string;
+    nameVn: string;
+  };
   content: string;
-  level: string;
+  level: number;
   required_points: string;
 }
 
@@ -34,8 +42,11 @@ export default function CreateTaskPage() {
   const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<QuestionBankItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // States filters
   const [genreFilter, setGenreFilter] = useState('');
-  const [levelFilter, setLevelFilter] = useState('');
+  const [topicFilter, setTopicFilter] = useState(''); // Đổi từ levelFilter sang topicFilter
+  
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -72,7 +83,7 @@ export default function CreateTaskPage() {
         const questionsData = await questionsRes.json();
         setQuestionBank(questionsData.questions);
         setFilteredQuestions(questionsData.questions);
-
+        
         // Fetch students
         setLoadingStudents(true);
         const studentsRes = await fetch(API_ENDPOINTS.TEACHER_STUDENTS, {
@@ -98,27 +109,56 @@ export default function CreateTaskPage() {
     fetchData();
   }, []);
 
+  // Bảng tra cứu mapping Thể loại
+  const GENRE_MAPPING: Record<string, string[]> = {
+    '手紙': ['お礼状', '問い合わせ状', '助言書'],
+    'スピーチ': ['ある話題について話す', '経験について語る'],
+    '意見・感想': ['作品についての考察', '問題を分析し、解決策を提案する', '視点を比較して選択する']
+  };
+
+  // Bảng tra cứu mapping Chủ đề (dựa vào file seed)
+  const TOPIC_MAPPING: Record<string, string[]> = {
+    '観光': ['ホームステイ'],
+    '友人': ['同級生', '思いやりと励ましを示す'],
+    '教育': ['キャリアガイダンス', '学業上のプレッシャー'],
+    '文化と芸術': ['膜', '映画'],
+    'ライフスタイル': ['学生生活', 'ライフスタイル'],
+    '社会': ['人間の価値観'],
+    '自己': ['人生哲学', '失敗と成長']
+  };
+
   // Filter questions based on search and filters
   useEffect(() => {
     let filtered = questionBank;
 
+    // Lọc theo search term
     if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
       filtered = filtered.filter(q =>
-        q.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.content.toLowerCase().includes(searchTerm.toLowerCase())
+        q.subTopic?.nameJp?.toLowerCase().includes(lowerSearch) ||
+        q.subTopic?.nameVn?.toLowerCase().includes(lowerSearch) ||
+        q.content?.toLowerCase().includes(lowerSearch)
       );
     }
 
+    // Lọc theo Genre
     if (genreFilter) {
-      filtered = filtered.filter(q => q.genre === genreFilter);
+      const allowedSubGenres = GENRE_MAPPING[genreFilter] || [];
+      filtered = filtered.filter(q => 
+        q.subGenre?.nameJp && allowedSubGenres.includes(q.subGenre.nameJp)
+      );
     }
 
-    if (levelFilter) {
-      filtered = filtered.filter(q => q.level === levelFilter);
+    // Lọc theo Topic
+    if (topicFilter) {
+      const allowedSubTopics = TOPIC_MAPPING[topicFilter] || [];
+      filtered = filtered.filter(q => 
+        q.subTopic?.nameJp && allowedSubTopics.includes(q.subTopic.nameJp)
+      );
     }
 
     setFilteredQuestions(filtered);
-  }, [questionBank, searchTerm, genreFilter, levelFilter]);
+  }, [questionBank, searchTerm, genreFilter, topicFilter]);
 
   const toggleQuestionSelection = (questionId: number) => {
     setSelectedQuestionIds(prev =>
@@ -131,7 +171,7 @@ export default function CreateTaskPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-if (selectedQuestionIds.length === 0) {
+    if (selectedQuestionIds.length === 0) {
       setMessage('Please select at least one question.');
       return;
     }
@@ -148,7 +188,7 @@ if (selectedQuestionIds.length === 0) {
         return;
       }
 
-const payload = {
+      const payload = {
         title: formData.title,
         description: formData.description,
         difficulty: formData.difficulty,
@@ -171,7 +211,6 @@ const payload = {
         throw new Error(errorData.error || 'Failed to create task');
       }
 
-      const data = await response.json();
       setMessage('✅ Task created successfully!');
       setTimeout(() => {
         router.push('/teacher/tasks');
@@ -190,12 +229,12 @@ const payload = {
         </div>
 
         {message && (
-          <div className="alert alert-success mb-6">
+          <div className={`alert mb-6 p-4 rounded-lg font-semibold ${message.includes('❌') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
             {message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg p-8 shadow-sm border border-gray-100">
           {/* Basic Information */}
           <div className="mb-8">
             <h3 className="text-2xl font-semibold mb-4">Basic Information</h3>
@@ -206,7 +245,8 @@ const payload = {
               </label>
               <input type="text" id="title" value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="custom-input" placeholder="e.g., N5 Kanji Writing Practice" required
+                className="custom-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                placeholder="e.g., N5 Kanji Writing Practice" required
               />
             </div>
 
@@ -218,7 +258,7 @@ const payload = {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="custom-textarea"
+                className="custom-textarea w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 rows={4}
                 placeholder="Describe the task objectives and requirements..."
                 required
@@ -234,7 +274,7 @@ const payload = {
                   id="difficulty"
                   value={formData.difficulty}
                   onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                  className="custom-select"
+                  className="custom-select w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 >
                   <option value="N5">N5 (Beginner)</option>
@@ -254,7 +294,7 @@ const payload = {
                   id="dueDate"
                   value={formData.dueDate}
                   onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                  className="custom-input"
+                  className="custom-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
@@ -262,7 +302,7 @@ const payload = {
 
           {/* Question Bank Selection */}
           <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-4">Select Questions from Question Bank</h3>
+            <h3 className="text-2xl font-semibold mb-4">Select Questions</h3>
             
             {/* Search and Filters */}
             <div className="flex flex-col md:flex-row gap-4 mb-4">
@@ -273,55 +313,60 @@ const payload = {
                   placeholder="Search questions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="custom-input pl-10"
+                  className="custom-input w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+
+              {/* Lọc theo Thể loại (Genre) */}
               <select
                 value={genreFilter}
                 onChange={(e) => setGenreFilter(e.target.value)}
-                className="custom-select"
+                className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">All Genres</option>
-                <option value="grammar">Grammar</option>
-                <option value="vocabulary">Vocabulary</option>
-                <option value="kanji">Kanji</option>
-                <option value="reading">Reading</option>
+                <option value="手紙">手紙 (Thư)</option>
+                <option value="スピーチ">スピーチ (Phát biểu)</option>
+                <option value="意見・感想">意見・感想 (Ý kiến/Cảm nghĩ)</option>
               </select>
+
+              {/* Lọc theo Chủ đề (Topic) */}
               <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
-                className="custom-select"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="">All Levels</option>
-                <option value="N5">N5</option>
-                <option value="N4">N4</option>
-                <option value="N3">N3</option>
-                <option value="N2">N2</option>
-                <option value="N1">N1</option>
+                <option value="">All Topics</option>
+                <option value="観光">観光 (Du lịch)</option>
+                <option value="友人">友人 (Bạn bè)</option>
+                <option value="教育">教育 (Giáo dục)</option>
+                <option value="文化と芸術">文化と芸術 (Văn hóa - Nghệ thuật)</option>
+                <option value="ライフスタイル">ライフスタイル (Lối sống)</option>
+                <option value="社会">社会 (Xã hội)</option>
+                <option value="自己">自己 (Bản thân)</option>
               </select>
             </div>
 
-            <p className="text-gray-600 mb-4">
-              Selected: {selectedQuestionIds.length} question(s)
+            <p className="text-gray-600 mb-4 font-medium">
+              Selected: <span className="text-blue-600 font-bold">{selectedQuestionIds.length}</span> question(s)
             </p>
 
-{/* Question List */}
-            <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-4">
+            {/* Question List */}
+            <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
               {loading ? (
-                <p className="text-center text-gray-500">Loading questions...</p>
+                <p className="text-center text-gray-500 py-4">Loading questions...</p>
               ) : error ? (
-                <p className="text-center text-red-500">{error}</p>
+                <p className="text-center text-red-500 py-4">{error}</p>
               ) : filteredQuestions.length === 0 ? (
-                <p className="text-center text-gray-500">No questions found.</p>
+                <p className="text-center text-gray-500 py-4">No questions found.</p>
               ) : (
                 filteredQuestions.map((question) => (
                   <div
                     key={question.id}
                     onClick={() => toggleQuestionSelection(question.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    className={`p-4 border bg-white rounded-lg cursor-pointer transition-colors ${
                       selectedQuestionIds.includes(question.id)
-                        ? 'border-primary bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                        : 'border-gray-200 hover:border-blue-300'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -329,13 +374,28 @@ const payload = {
                         type="checkbox"
                         checked={selectedQuestionIds.includes(question.id)}
                         onChange={() => toggleQuestionSelection(question.id)}
-                        className="mt-1"
+                        onClick={(e) => e.stopPropagation()} 
+                        className="mt-1.5 w-4 h-4 text-blue-600 rounded cursor-pointer"
                       />
-                      <div>
-                        <p className="font-semibold">{question.content}</p>
-                        <p className="text-sm text-gray-500">
-                          {question.topic} • {question.level} • {question.genre}
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 mb-2 leading-relaxed">
+                          {question.content}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-800">
+                            Level {question.level}
+                          </span>
+                          {question.subGenre && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                              {question.subGenre.nameJp} ({question.subGenre.nameVn})
+                            </span>
+                          )}
+                          {question.subTopic && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                              {question.subTopic.nameJp} ({question.subTopic.nameVn})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -351,7 +411,7 @@ const payload = {
               Assign to Students
             </h3>
             
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -362,9 +422,9 @@ const payload = {
                       setSelectedStudentIds([]);
                     }
                   }}
-                  className="w-5 h-5 text-primary"
+                  className="w-5 h-5 text-blue-600 rounded cursor-pointer"
                 />
-                <span className="font-medium">Assign to all students</span>
+                <span className="font-medium text-gray-800">Assign to all students</span>
               </label>
               <p className="text-sm text-gray-500 mt-1 ml-8">
                 If checked, all students can see this task. If not, select specific students below.
@@ -373,8 +433,8 @@ const payload = {
 
             {!assignToAll && (
               <div>
-                <p className="text-gray-600 mb-4">
-                  Selected: {selectedStudentIds.length} student(s)
+                <p className="text-gray-600 mb-4 font-medium">
+                  Selected: <span className="text-green-600 font-bold">{selectedStudentIds.length}</span> student(s)
                 </p>
                 
                 {loadingStudents ? (
@@ -382,7 +442,7 @@ const payload = {
                 ) : students.length === 0 ? (
                   <p className="text-center text-gray-500">No students found.</p>
                 ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-4">
+                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-4 bg-gray-50">
                     {students.map((student) => (
                       <div
                         key={student.id}
@@ -393,9 +453,9 @@ const payload = {
                               : [...prev, student.id]
                           );
                         }}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        className={`p-3 border bg-white rounded-lg cursor-pointer transition-colors ${
                           selectedStudentIds.includes(student.id)
-                            ? 'border-green-500 bg-green-50'
+                            ? 'border-green-500 bg-green-50 ring-1 ring-green-500'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
@@ -410,10 +470,11 @@ const payload = {
                                   : [...prev, student.id]
                               );
                             }}
-                            className="mt-1"
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 w-4 h-4 text-green-600 rounded cursor-pointer"
                           />
                           <div>
-                            <p className="font-semibold">{student.username}</p>
+                            <p className="font-semibold text-gray-800">{student.username}</p>
                             <p className="text-sm text-gray-500">
                               JLPT Level: {student.jlpt_level || 'N/A'} • Points: {student.total_points}
                             </p>
@@ -429,10 +490,11 @@ const payload = {
 
           {/* Submit Buttons */}
           <div className="flex gap-4">
-            <button type="submit" className="bg-secondary text-white px-6 rounded-lg font-semibold hover:bg-primary transition-colors gap-2">
+            <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
+              <Plus className="w-5 h-5" />
               Create Task
             </button>
-            <Link href="/teacher/tasks" className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center">
+            <Link href="/teacher/tasks" className="bg-gray-200 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors inline-flex items-center">
               Cancel
             </Link>
           </div>

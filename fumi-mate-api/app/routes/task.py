@@ -169,8 +169,16 @@ def list_questions():
             'questions': [
                 {
                     'id': q.id,
-                    'genre': q.genre,
-                    'topic': q.topic,
+                    'subGenre': {
+                        'id': q.sub_genre_id,
+                        'nameJp': getattr(q.sub_genre, 'name_jp', 'N/A'),
+                        'nameVn': getattr(q.sub_genre, 'name_vn', 'N/A')
+                    },
+                    'subTopic': {
+                        'id': q.sub_topic_id,
+                        'nameJp': getattr(q.sub_topic, 'name_jp', 'N/A'),
+                        'nameVn': getattr(q.sub_topic, 'name_vn', 'N/A')
+                    },
                     'content': q.content,
                     'level': q.level,
                     'required_points': q.required_points

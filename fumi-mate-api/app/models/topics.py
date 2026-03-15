@@ -8,9 +8,9 @@ class Topic(db.Model):
     name_jp = db.Column(db.String(255), nullable=False)
     name_vn = db.Column(db.String(255), nullable=False)
 
-    # Self-referential relationship for hierarchy
-    parent = db.relationship('Topic', remote_side=[id], back_populates='subtopics')
-    subtopics = db.relationship('Topic', back_populates='parent')
+    # Self-referential relationship for hierarchy (disabled - add FK migration later)
+    # parent = db.relationship('Topic', remote_side=[id], back_populates='subtopics')
+    # subtopics = db.relationship('Topic', back_populates='parent')
     
     # Questions using this topic/sub-topic
     questions = db.relationship('QuestionBank', back_populates='sub_topic')

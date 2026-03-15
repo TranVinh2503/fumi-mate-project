@@ -8,9 +8,9 @@ class Genre(db.Model):
     name_jp = db.Column(db.String(255), nullable=False)
     name_vn = db.Column(db.String(255), nullable=False)
 
-    # Self-referential relationship for hierarchy
-    parent = db.relationship('Genre', remote_side=[id], back_populates='subgenres')
-    subgenres = db.relationship('Genre', back_populates='parent')
+    # Self-referential relationship for hierarchy (disabled - add FK migration later)
+    # parent = db.relationship('Genre', remote_side=[id], back_populates='subgenres')
+    # subgenres = db.relationship('Genre', back_populates='parent')
     
     # Questions using this genre/sub-genre
     questions = db.relationship('QuestionBank', back_populates='sub_genre')

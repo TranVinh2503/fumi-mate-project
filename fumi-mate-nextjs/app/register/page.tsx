@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
 
   const [username, setUsername] = useState('')
@@ -15,11 +14,19 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const renderRoleLabel = (r: string) => {
+    switch (r) {
+      case 'student': return 'Học sinh';
+      case 'teacher': return 'Giáo viên';
+      case 'admin': return 'Quản trị viên';
+      default: return r;
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
-    console.log("Register here")
 
     try {
       const res = await fetch(API_ENDPOINTS.REGISTER, {
@@ -37,19 +44,23 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setMessage(data.message || 'Login failed')
+        setMessage(data.message || 'Đăng ký thất bại');
         setLoading(false)
         return
       }
 
-      // ✅ Save JWT
+      // ✅ Lưu JWT
       localStorage.setItem('access_token', data.access_token)
 
-      setMessage('Login successful!')
-      router.push('/login') // hoặc dashboard
+      setMessage('Đăng ký thành công!')
+      
+      // Chuyển hướng sang trang đăng nhập sau 1 giây
+      setTimeout(() => {
+        router.push('/login')
+      }, 1000)
 
     } catch (err) {
-      setMessage('Server error')
+      setMessage('Lỗi máy chủ, vui lòng thử lại sau')
     } finally {
       setLoading(false)
     }
@@ -57,17 +68,17 @@ export default function LoginPage() {
 
   return (
     <section className="min-h-screen flex items-start justify-center py-20">
-      <div className="max-w-md w-full bg-white">
-        <h2 className="text-3xl font-title font-bold text-start mb-8">Register</h2>
+      <div className="max-w-md w-full bg-white px-4">
+        <h2 className="text-3xl font-title font-bold text-start mb-8">Đăng ký tài khoản</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
-              Username
+              Tên đăng nhập
             </label>
             <input
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="Username"
+              placeholder="Nhập tên đăng nhập"
               className="custom-input"
               required
             />
@@ -75,49 +86,48 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-              Password
+              Mật khẩu
             </label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="Confirm your password"
+              placeholder="Nhập mật khẩu của bạn"
               className="custom-input"
               required
             />
           </div>
 
-<div>
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    Role
-  </label>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Vai trò
+            </label>
 
-  <div className="flex gap-3">
-    {["student", "teacher", "admin"].map((r) => (
-      <button
-        key={r}
-        type="button"
-        onClick={() => setRole(r as typeof role)}
-        className={`
-          px-4 py-2 rounded-xl border text-sm font-medium transition
-          ${
-            role === r
-              ? "bg-secondary text-white border-secondary"
-              : "border-gray-300 text-gray-700 hover:border-secondary hover:text-secondary"
-          }
-          focus:outline-none
-        `}
-      >
-        {r.charAt(0).toUpperCase() + r.slice(1)}
-      </button>
-    ))}
-  </div>
-</div>
-
+            <div className="flex gap-3">
+              {["student", "teacher"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r as typeof role)}
+                  className={`
+                    px-4 py-2 rounded-xl border text-sm font-medium transition
+                    ${
+                      role === r
+                        ? "bg-secondary text-white border-secondary"
+                        : "border-gray-300 text-gray-700 hover:border-secondary hover:text-secondary"
+                    }
+                    focus:outline-none
+                  `}
+                >
+                  {renderRoleLabel(r)}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {message && (
             <div className={`text-center p-3 rounded-lg ${
-              message.includes('successful') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              message.includes('thành công') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
             }`}>
               {message}
             </div>
@@ -126,18 +136,19 @@ export default function LoginPage() {
           <div className="text-center">
             <button
               type="submit"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors w-full md:w-auto"
+              disabled={loading}
+              className={`bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors w-full md:w-auto ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Register
+              {loading ? 'Đang xử lý...' : 'Đăng ký'}
             </button>
           </div>
         </form>
 
         <div className="text-center mt-6">
           <p className="text-gray-600">
-            Already have an account?{' '}
+            Bạn đã có tài khoản?{' '}
             <Link href="/login" className="text-primary font-semibold hover:underline">
-              Login
+              Đăng nhập ngay
             </Link>
           </p>
         </div>

@@ -1,23 +1,15 @@
-# Task: Replace hardcoded genre/topic mappings with API fetches in teacher task create page
+# Vietnamese UI Translation TODO
 
-## Steps to complete:
+## Plan Steps (Approved)
+1. [x] Create TODO.md ✅
+2. [ ] Update shared files: layout.tsx, Navbar.tsx
+3. [ ] Update teacher pages: tasks/page.tsx, tasks/[taskId]/page.tsx, students/page.tsx
+4. [ ] Update admin pages: admin/page.tsx, admin/question-bank/page.tsx
+5. [ ] Update student pages: tasks/page.tsx, submissions/page.tsx
+6. [ ] Update auth pages: login/page.tsx, register/page.tsx
+7. [ ] Update home page.tsx tabs/FAQ if needed
+8. [ ] Test: cd fumi-mate-nextjs && npm run dev
+9. [ ] Search remaining strings with search_files, iterate
+10. [ ] Complete & attempt_completion
 
-### 1. ✅ Create TODO.md (done)
-
-### 2. ✅ Confirm apiConfig.ts has ADMIN_GENRES & ADMIN_TOPICS (done)
-
-### 3. ✅ Updated filter logic to use dynamic mappings
-### 4. ✅ Replaced hardcoded dropdown options with dynamic mainGenres/mainTopics
-### 5. Test frontend
-
-### 4. Test frontend:
-   - Check dropdowns populate with real data
-   - Verify filtering works with sub-genre/topic names
-
-### 5. If auth error on admin APIs:
-   - Edit fumi-mate-api/app/api/admin.py to allow teacher role on GET /genres, /topics
-
-### 6. Seed data if needed and final test
-
-### 7. attempt_completion
-
+Current: Starting with step 2.

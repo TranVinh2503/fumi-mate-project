@@ -17,7 +17,7 @@ export default function TeacherStudentsPage() {
         const studentUsers = allUsers.filter(user => user.user_type === 'student');
         setStudents(studentUsers);
       } catch (error) {
-        console.error('Error loading students:', error);
+        console.error('Lỗi khi tải danh sách học sinh:', error);
       } finally {
         setLoading(false);
       }
@@ -31,7 +31,7 @@ export default function TeacherStudentsPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading students...</p>
+          <p className="mt-4 text-gray-600">Đang tải danh sách học sinh...</p>
         </div>
       </div>
     );
@@ -40,10 +40,10 @@ export default function TeacherStudentsPage() {
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-4xl font-title font-bold mb-8">Student Management</h2>
+        <h2 className="text-4xl font-title font-bold mb-8">Quản lý học sinh</h2>
         <div className="flex items-center gap-2 text-gray-600">
           <Users className="w-5 h-5" />
-          <span>{students.length} students</span>
+          <span>{students.length} học sinh</span>
         </div>
       </div>
 
@@ -57,7 +57,7 @@ export default function TeacherStudentsPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{student.name}</h3>
-                  <p className="text-sm text-gray-500">ID: {student.id}</p>
+                  <p className="text-sm text-gray-500">Mã HS: {student.id}</p>
                 </div>
               </div>
 
@@ -68,7 +68,7 @@ export default function TeacherStudentsPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4" />
-                  <span>Joined recently</span>
+                  <span>Vừa mới tham gia</span>
                 </div>
               </div>
 
@@ -77,7 +77,7 @@ export default function TeacherStudentsPage() {
                   href={`/teacher/students/${student.id}`}
                   className="w-full bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-secondary transition-colors text-center block"
                 >
-                  View Details
+                  Xem chi tiết
                 </Link>
               </div>
             </div>
@@ -86,8 +86,8 @@ export default function TeacherStudentsPage() {
       ) : (
         <div className="text-center mt-12 bg-white rounded-lg shadow-lg p-12">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg mb-6">No students found.</p>
-          <p className="text-gray-400">Students will appear here once they join your classes.</p>
+          <p className="text-gray-500 text-lg mb-6">Không tìm thấy học sinh nào.</p>
+          <p className="text-gray-400">Học sinh sẽ xuất hiện tại đây sau khi tham gia vào lớp học của bạn.</p>
         </div>
       )}
     </section>

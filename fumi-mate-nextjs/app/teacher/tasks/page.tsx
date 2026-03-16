@@ -55,8 +55,9 @@ export default function TeacherTasksPage() {
 
     console.log('Deleting task:', taskId);
     setTasks(tasks.filter(t => t.id !== taskId));
-    setMessage('Task deleted successfully!');
+    setMessage('Xóa nhiệm vụ thành công!');
   };
+
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
@@ -64,12 +65,12 @@ export default function TeacherTasksPage() {
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
       <div className="flex justify-between items-center my-8">
-        <h2 className="text-4xl font-title font-bold">Task Management</h2>
+        <h2 className="text-4xl font-title font-bold">Quản lý nhiệm vụ</h2>
         <Link href="/teacher/tasks/create"
           className="bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary transition-colors flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Create New Task
+          Tạo nhiệm vụ mới
         </Link>
       </div>
 
@@ -92,11 +93,11 @@ export default function TeacherTasksPage() {
             <table className="w-full">
               <thead className="bg-gray-100 border-b border-gray">
                 <tr>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Task ID</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Title</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Difficulty</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Due Date</th>
-                  <th className="px-6 py-4 text-center font-semibold text-gray-700">Actions</th>
+<th className="px-6 py-4 text-left font-semibold text-gray-700">ID Nhiệm vụ</th>
+<th className="px-6 py-4 text-left font-semibold text-gray-700">Tiêu đề</th>
+<th className="px-6 py-4 text-left font-semibold text-gray-700">Độ khó</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Hạn chót</th>
+<th className="px-6 py-4 text-center font-semibold text-gray-700">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,14 +120,14 @@ export default function TeacherTasksPage() {
                         <Link
                           href={`/teacher/tasks/${task.id}`}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View Details"
+                          title="Xem chi tiết"
                         >
                           <Eye className="w-5 h-5" />
                         </Link>
                         <Link
                           href={`/teacher/tasks/${task.id}/edit`}
                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Edit Task"
+                          title="Sửa nhiệm vụ"
                         >
                           <Edit className="w-5 h-5" />
                         </Link>
@@ -147,13 +148,13 @@ export default function TeacherTasksPage() {
         </div>
       ) : (
         <div className="text-center mt-12 bg-white rounded-lg shadow-lg p-12">
-          <p className="text-gray-500 text-lg mb-6">No tasks created yet.</p>
+          <p className="text-gray-500 text-lg mb-6">Chưa có nhiệm vụ nào được tạo.</p>
           <Link
             href="/teacher/tasks/create"
             className="inline-flex items-center gap-2 bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Create Your First Task
+            Tạo nhiệm vụ đầu tiên
           </Link>
         </div>
       )}

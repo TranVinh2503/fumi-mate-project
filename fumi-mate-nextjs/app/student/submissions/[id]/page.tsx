@@ -32,11 +32,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
   const [feedback, setFeedback] = useState<FeedbackData>({});
 
   useEffect(() => {
-    // TODO: Fetch submission from Flask API
-    // const response = await fetch(`/api/student/submissions/${submissionId}`);
-    // const data = await response.json();
-    // setSubmission(data);
-    
+    // Logic fetch dữ liệu bài nộp
     const foundSubmission = getSubmissionById(submissionId);
     setSubmission(foundSubmission || null);
     
@@ -49,7 +45,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
   if (!submission) {
     return (
       <div className="container mx-auto section-padding text-center">
-        <p className="text-xl text-gray-600">Loading submission...</p>
+        <p className="text-xl text-gray-600">Đang tải thông tin bài làm...</p>
       </div>
     );
   }
@@ -58,22 +54,18 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
     <section className="section-padding mt-5 container mx-auto px-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-bold">
-            {/* {submission.task?.title ||'Submission Detail'} */}
-            {'Submission Detail'}
-
-          </h2>
+          <h2 className="text-4xl font-bold">Chi tiết bài làm</h2>
           <Link
             href="/student/submissions"
             className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
           >
-            ← Back to Submissions
+            ← Quay lại danh sách
           </Link>
         </div>
 
-        {/* Your Writing */}
+        {/* Nội dung bài viết */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-2xl font-semibold mb-4">Your Writing</h5>
+          <h5 className="text-2xl font-semibold mb-4">Bài viết của bạn</h5>
           <div className="prose max-w-none">
             <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
               {submission.content}
@@ -81,48 +73,48 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           </div>
         </div>
 
-        {/* Scores */}
+        {/* Điểm số */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-2xl font-semibold mb-4">Scores & Feedback</h5>
+          <h5 className="text-2xl font-semibold mb-4">Điểm số & Nhận xét</h5>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">AI Score</p>
+              <p className="text-sm text-gray-600 mb-1">Điểm AI chấm</p>
               <p className="text-3xl font-bold text-blue-600">
                 {submission.ai_score || '—'}
               </p>
               {feedback.grade && (
-                <p className="text-lg text-gray-700 mt-2">Grade: {feedback.grade}</p>
+                <p className="text-lg text-gray-700 mt-2">Xếp loại: {feedback.grade}</p>
               )}
             </div>
             <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Teacher Score</p>
+              <p className="text-sm text-gray-600 mb-1">Điểm giáo viên chấm</p>
               <p className="text-3xl font-bold text-green-600">
                 {submission.teacher_score || '—'}
               </p>
             </div>
           </div>
 
-          {/* AI Feedback */}
+          {/* Nhận xét từ AI */}
           {feedback.feedbackText && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h6 className="font-semibold text-lg mb-2">📣 AI Feedback</h6>
+              <h6 className="font-semibold text-lg mb-2">📣 Nhận xét từ AI</h6>
               <p className="text-gray-700 leading-relaxed">{feedback.feedbackText}</p>
             </div>
           )}
 
-          {/* Teacher Feedback */}
+          {/* Nhận xét từ giáo viên */}
           {submission.teacher_feedback && (
             <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-              <h6 className="font-semibold text-lg mb-2">👨‍🏫 Teacher Feedback</h6>
+              <h6 className="font-semibold text-lg mb-2">👨‍🏫 Nhận xét từ giáo viên</h6>
               <p className="text-gray-700 leading-relaxed">{submission.teacher_feedback}</p>
             </div>
           )}
         </div>
 
-        {/* Action Plan */}
+        {/* Lộ trình hành động */}
         {feedback.actionPlan && feedback.actionPlan.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">✅ Action Plan</h5>
+            <h5 className="text-2xl font-semibold mb-4">✅ Kế hoạch cải thiện</h5>
             <ul className="space-y-3">
               {feedback.actionPlan.map((step, index) => (
                 <li key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
@@ -136,10 +128,10 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           </div>
         )}
 
-        {/* Practice Exercises */}
+        {/* Bài tập thực hành */}
         {feedback.practiceExercises && feedback.practiceExercises.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">🧠 Practice Exercises</h5>
+            <h5 className="text-2xl font-semibold mb-4">🧠 Bài tập bổ trợ</h5>
             <div className="space-y-4">
               {feedback.practiceExercises.map((exercise, index) => (
                 <div key={index} className="p-4 bg-blue-50 rounded-lg">
@@ -156,23 +148,23 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           </div>
         )}
 
-        {/* Detailed Analysis */}
+        {/* Phân tích chi tiết */}
         {feedback.detailedAnalysis && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">🔍 Detailed Analysis</h5>
+            <h5 className="text-2xl font-semibold mb-4">🔍 Phân tích chi tiết</h5>
             <div className="space-y-6">
-              {/* Grammar */}
+              {/* Ngữ pháp */}
               {feedback.detailedAnalysis.grammar && (
                 <div className="p-4 bg-purple-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h6 className="font-semibold text-lg">Grammar</h6>
+                    <h6 className="font-semibold text-lg">Ngữ pháp (Grammar)</h6>
                     <span className="text-2xl font-bold text-purple-600">
                       {feedback.detailedAnalysis.grammar.score}
                     </span>
                   </div>
                   {feedback.detailedAnalysis.grammar.issues && (
                     <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Issues:</p>
+                      <p className="text-sm font-semibold text-gray-700">Các lỗi mắc phải:</p>
                       <ul className="list-disc list-inside text-gray-600 text-sm">
                         {feedback.detailedAnalysis.grammar.issues.map((issue, i) => (
                           <li key={i}>{issue}</li>
@@ -182,7 +174,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
                   )}
                   {feedback.detailedAnalysis.grammar.suggestions && (
                     <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Suggestions:</p>
+                      <p className="text-sm font-semibold text-gray-700">Gợi ý sửa lỗi:</p>
                       <ul className="list-disc list-inside text-gray-600 text-sm">
                         {feedback.detailedAnalysis.grammar.suggestions.map((suggestion, i) => (
                           <li key={i}>{suggestion}</li>
@@ -193,18 +185,18 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
                 </div>
               )}
 
-              {/* Vocabulary */}
+              {/* Từ vựng */}
               {feedback.detailedAnalysis.vocabulary && (
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h6 className="font-semibold text-lg">Vocabulary</h6>
+                    <h6 className="font-semibold text-lg">Từ vựng (Vocabulary)</h6>
                     <span className="text-2xl font-bold text-green-600">
                       {feedback.detailedAnalysis.vocabulary.score}
                     </span>
                   </div>
                   {feedback.detailedAnalysis.vocabulary.strengths && (
                     <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Strengths:</p>
+                      <p className="text-sm font-semibold text-gray-700">Điểm mạnh:</p>
                       <ul className="list-disc list-inside text-gray-600 text-sm">
                         {feedback.detailedAnalysis.vocabulary.strengths.map((strength, i) => (
                           <li key={i}>{strength}</li>
@@ -214,7 +206,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
                   )}
                   {feedback.detailedAnalysis.vocabulary.improvements && (
                     <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Areas for Improvement:</p>
+                      <p className="text-sm font-semibold text-gray-700">Cần cải thiện:</p>
                       <ul className="list-disc list-inside text-gray-600 text-sm">
                         {feedback.detailedAnalysis.vocabulary.improvements.map((improvement, i) => (
                           <li key={i}>{improvement}</li>
@@ -225,11 +217,11 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
                 </div>
               )}
 
-              {/* Structure, Fluency, Content */}
+              {/* Bố cục, Trôi chảy, Nội dung */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {feedback.detailedAnalysis.structure && (
                   <div className="p-4 bg-yellow-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Structure</h6>
+                    <h6 className="font-semibold mb-2">Bố cục (Structure)</h6>
                     <p className="text-2xl font-bold text-yellow-600 mb-2">
                       {feedback.detailedAnalysis.structure.score}
                     </p>
@@ -241,7 +233,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
 
                 {feedback.detailedAnalysis.fluency && (
                   <div className="p-4 bg-blue-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Fluency</h6>
+                    <h6 className="font-semibold mb-2">Mạch lạc (Fluency)</h6>
                     <p className="text-2xl font-bold text-blue-600 mb-2">
                       {feedback.detailedAnalysis.fluency.score}
                     </p>
@@ -253,7 +245,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
 
                 {feedback.detailedAnalysis.content && (
                   <div className="p-4 bg-pink-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Content</h6>
+                    <h6 className="font-semibold mb-2">Nội dung (Content)</h6>
                     <p className="text-2xl font-bold text-pink-600 mb-2">
                       {feedback.detailedAnalysis.content.score}
                     </p>

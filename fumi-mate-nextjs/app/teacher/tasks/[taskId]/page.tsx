@@ -17,16 +17,16 @@ export default function TeacherTaskDetailPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
+  useEffect(() => {
     if (!taskId) return;
 
-const fetchTaskDetails = async () => {
+    const fetchTaskDetails = async () => {
       try {
         setLoading(true); 
 
         const token = localStorage.getItem('access_token');
         
-        // 1. Fetch task details from Flask API
+        // 1. Lấy chi tiết bài tập từ Flask API
         const response = await fetch(API_ENDPOINTS.TEACHER_TASK_DETAIL(Number(taskId)), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -34,32 +34,21 @@ const fetchTaskDetails = async () => {
           }
         });
         
-        // Kiểm tra nếu API trả về lỗi (ví dụ 404, 500)
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
         }
         
         const data = await response.json();
         setTask(data.task);
-        // Note: submissions are not yet included in the API response
-
-        /* * Lưu ý: Đoạn Mock data bên dưới sẽ ghi đè lên dữ liệu từ API ở trên. 
-         * Bạn nên comment lại nếu API đã hoạt động, hoặc dùng if/else để chuyển đổi 
-         * giữa chế độ dùng API thật và Mock data.
-         */
-        // const taskData = getTaskById(taskId);
-        // const submissionsData = getSubmissionsForTask(taskId);
-        // setTask(taskData || null);
-        // setSubmissions(submissionsData);
+        // Lưu ý: Bài nộp (submissions) có thể cần một API call riêng hoặc bổ sung sau
 
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
       } finally {
-        setLoading(false); // Đảm bảo luôn tắt trạng thái loading dù thành công hay thất bại
+        setLoading(false);
       }
     };
 
-    // Gọi hàm vừa khởi tạo
     fetchTaskDetails();
   }, [taskId]);
 
@@ -68,7 +57,7 @@ const fetchTaskDetails = async () => {
       <section className="container mx-auto section-padding mt-5 px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading task details...</p>
+          <p className="mt-4 text-gray-600">Đang tải chi tiết bài tập...</p>
         </div>
       </section>
     );
@@ -78,14 +67,14 @@ const fetchTaskDetails = async () => {
     return (
       <section className="container mx-auto section-padding mt-5 px-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Task Not Found</h2>
-          <p className="text-gray-600 mb-6">The task you're looking for doesn't exist.</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Không tìm thấy bài tập</h2>
+          <p className="text-gray-600 mb-6">Bài tập bạn đang tìm không tồn tại hoặc đã bị xóa.</p>
           <Link
             href="/teacher/tasks"
             className="inline-flex items-center gap-2 bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Tasks
+            Quay lại danh sách bài tập
           </Link>
         </div>
       </section>
@@ -102,13 +91,13 @@ const fetchTaskDetails = async () => {
           <Link
             href="/teacher/tasks"
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Back to Tasks"
+            title="Quay lại danh sách"
           >
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div>
-            <h1 className="text-4xl font-title font-bold">Task Details</h1>
-            <p className="text-gray-600">Task ID: {task.id}</p>
+            <h1 className="text-4xl font-title font-bold">Chi tiết bài tập</h1>
+            <p className="text-gray-600">Mã bài tập (ID): {task.id}</p>
           </div>
         </div>
         <Link
@@ -116,30 +105,30 @@ const fetchTaskDetails = async () => {
           className="inline-flex items-center gap-2 bg-secondary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary transition-colors"
         >
           <Edit className="w-5 h-5" />
-          Edit Task
+          Chỉnh sửa bài tập
         </Link>
       </div>
 
-      {/* Task Information */}
+      {/* Thông tin bài tập */}
       <div className="bg-white rounded-lg border-2 border-gray p-6 mb-8">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <FileText className="w-6 h-6 text-primary" />
-          Task Information
+          Thông tin chung
         </h2>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-lg font-semibold mb-4">Question Details</h3>
+            <h3 className="text-lg font-semibold mb-4">Chi tiết câu hỏi</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                  {question?.question_text || 'N/A'}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung câu hỏi</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg italic">
+                  "{question?.question_text || 'Không có dữ liệu'}"
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty Level</label>
-                <span className="badge badge-info">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ khó</label>
+                <span className="badge badge-info bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">
                   {question?.difficulty_level || 'N/A'}
                 </span>
               </div>
@@ -147,14 +136,14 @@ const fetchTaskDetails = async () => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Task Settings</h3>
+            <h3 className="text-lg font-semibold mb-4">Cài đặt bài tập</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-gray-500" />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Deadline</label>
-                  <p className="text-gray-900">
-                    {new Date(task.deadline).toLocaleDateString('en-US', {
+                  <label className="block text-sm font-medium text-gray-700">Hạn chót</label>
+                  <p className="text-gray-900 font-medium">
+                    {new Date(task.deadline).toLocaleDateString('vi-VN', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -167,8 +156,8 @@ const fetchTaskDetails = async () => {
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-gray-500" />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Submissions</label>
-                  <p className="text-gray-900">{submissions.length} submissions</p>
+                  <label className="block text-sm font-medium text-gray-700">Số lượng bài nộp</label>
+                  <p className="text-gray-900">{submissions.length} bài đã nộp</p>
                 </div>
               </div>
             </div>
@@ -176,11 +165,11 @@ const fetchTaskDetails = async () => {
         </div>
       </div>
 
-      {/* Submissions */}
-      <div className="bg-white rounded-lg p-6">
+      {/* Danh sách bài nộp */}
+      <div className="bg-white rounded-lg p-6 shadow-sm">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Users className="w-6 h-6 text-primary" />
-          Student Submissions ({submissions.length})
+          Danh sách học sinh làm bài ({submissions.length})
         </h2>
 
         {submissions.length > 0 ? (
@@ -188,11 +177,11 @@ const fetchTaskDetails = async () => {
             <table className="w-full">
               <thead className="bg-gray-100 rounded-lg border-2 border-gray">
                 <tr>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Student</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">AI Score</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Teacher Score</th>
-                  <th className="px-6 py-4 text-center font-semibold text-gray-700">Actions</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Học sinh</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Trạng thái</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm AI</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm GV</th>
+                  <th className="px-6 py-4 text-center font-semibold text-gray-700">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,18 +191,18 @@ const fetchTaskDetails = async () => {
                       <p className="font-semibold text-gray-900">{submission.student_id}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`badge ${
-                        submission.status === 0 ? 'badge-warning' :
-                        submission.status === 1 ? 'badge-info' :
-                        submission.status === 2 ? 'badge-primary' :
-                        submission.status === 3 ? 'badge-success' :
-                        'badge-secondary'
+                      <span className={`badge px-2 py-1 rounded text-xs font-bold ${
+                        submission.status === 0 ? 'bg-yellow-100 text-yellow-800' :
+                        submission.status === 1 ? 'bg-blue-100 text-blue-800' :
+                        submission.status === 2 ? 'bg-indigo-100 text-indigo-800' :
+                        submission.status === 3 ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {submission.status === 0 ? 'Draft' :
-                         submission.status === 1 ? 'Submitted' :
-                         submission.status === 2 ? 'AI Graded' :
-                         submission.status === 3 ? 'Teacher Graded' :
-                         'Reviewed'}
+                        {submission.status === 0 ? 'Bản nháp' :
+                         submission.status === 1 ? 'Đã nộp' :
+                         submission.status === 2 ? 'AI đã chấm' :
+                         submission.status === 3 ? 'GV đã chấm' :
+                         'Đã xem'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -236,7 +225,7 @@ const fetchTaskDetails = async () => {
                         className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors text-sm"
                       >
                         <FileText className="w-4 h-4" />
-                        View Details
+                        Xem chi tiết
                       </Link>
                     </td>
                   </tr>
@@ -247,8 +236,8 @@ const fetchTaskDetails = async () => {
         ) : (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No submissions yet.</p>
-            <p className="text-gray-400 text-sm mt-2">Students haven't submitted their work for this task yet.</p>
+            <p className="text-gray-500 text-lg">Chưa có bài nộp nào.</p>
+            <p className="text-gray-400 text-sm mt-2">Học sinh chưa thực hiện nộp bài cho nhiệm vụ này.</p>
           </div>
         )}
       </div>

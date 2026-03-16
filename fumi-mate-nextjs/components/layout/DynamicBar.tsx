@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 
 const messages = [
-  "Welcome to Fumi Mate — Learn Japanese with fun 🌸",
-  "Master kanji, grammar, and writing with AI 💫",
-  "Join your teacher and improve every day 📖",
-  "Learn Japanese beautifully — anytime, anywhere 🗾"
+  "Chào mừng đến Fumi Mate — Học tiếng Nhật vui vẻ 🌸",
+  "Làm chủ kanji, ngữ pháp và viết với AI 💫",
+  "Học cùng giáo viên và tiến bộ mỗi ngày 📖",
+  "Học tiếng Nhật đẹp đẽ — bất cứ lúc nào, bất cứ nơi đâu 🗾"
 ];
 
 export default function DynamicBar() {

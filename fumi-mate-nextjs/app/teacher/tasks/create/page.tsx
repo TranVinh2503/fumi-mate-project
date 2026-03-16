@@ -219,12 +219,12 @@ export default function CreateTaskPage() {
     e.preventDefault();
 
     if (selectedQuestionIds.length === 0) {
-      setMessage('Please select at least one question.');
+      setMessage('Hãy chọn ít nhất 1 câu hỏi');
       return;
     }
 
     if (!assignToAll && selectedStudentIds.length === 0) {
-      setMessage('Please select at least one student or check "Assign to all students".');
+      setMessage('Hãy chọn ít nhất 1 học sinh hoặc tick chọn tất cả.');
       return;
     }
 
@@ -255,10 +255,10 @@ export default function CreateTaskPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create task');
+        throw new Error(errorData.error || 'Tạo bài tập thất bại');
       }
 
-      setMessage('✅ Task created successfully!');
+      setMessage('✅ Tạo bài tập thành công');
       setTimeout(() => {
         router.push('/teacher/tasks');
       }, 1500);
@@ -268,11 +268,11 @@ export default function CreateTaskPage() {
     }
   };
 
-  return (
+return (
     <section className="section-padding mt-5 container mx-auto px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-title font-bold">Create New Task</h2>
+          <h2 className="text-4xl font-title font-bold">Tạo bài tập mới</h2>
         </div>
 
         {message && (
@@ -282,24 +282,24 @@ export default function CreateTaskPage() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg p-8 shadow-sm border border-gray-100">
-          {/* Basic Information */}
+          {/* Thông tin cơ bản */}
           <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-4">Basic Information</h3>
+            <h3 className="text-2xl font-semibold mb-4">Thông tin cơ bản</h3>
             
             <div className="mb-4">
               <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
-                Task Title *
+                Tiêu đề bài tập *
               </label>
               <input type="text" id="title" value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="custom-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-                placeholder="e.g., N5 Kanji Writing Practice" required
+                placeholder="VD: Luyện viết Kanji N5" required
               />
             </div>
 
             <div className="mb-4">
               <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
-                Description *
+                Mô tả bài tập *
               </label>
               <textarea
                 id="description"
@@ -307,34 +307,15 @@ export default function CreateTaskPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="custom-textarea w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 rows={4}
-                placeholder="Describe the task objectives and requirements..."
+                placeholder="Mô tả mục tiêu và yêu cầu của bài tập..."
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="difficulty" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Difficulty Level *
-                </label>
-                <select
-                  id="difficulty"
-                  value={formData.difficulty}
-                  onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                  className="custom-select w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                >
-                  <option value="N5">N5 (Beginner)</option>
-                  <option value="N4">N4 (Elementary)</option>
-                  <option value="N3">N3 (Intermediate)</option>
-                  <option value="N2">N2 (Upper Intermediate)</option>
-                  <option value="N1">N1 (Advanced)</option>
-                </select>
-              </div>
-
-              <div>
                 <label htmlFor="dueDate" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Due Date
+                  Hạn chót nộp bài
                 </label>
                 <input
                   type="date"
@@ -347,17 +328,17 @@ export default function CreateTaskPage() {
             </div>
           </div>
 
-          {/* Question Bank Selection */}
+          {/* Chọn câu hỏi từ ngân hàng câu hỏi */}
           <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-4">Select Questions</h3>
+            <h3 className="text-2xl font-semibold mb-4">Chọn câu hỏi</h3>
             
-            {/* Search and Filters */}
+            {/* Tìm kiếm và Bộ lọc */}
             <div className="flex flex-col md:flex-row gap-4 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search questions..."
+                  placeholder="Tìm kiếm câu hỏi..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="custom-input w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -370,9 +351,9 @@ export default function CreateTaskPage() {
                 onChange={(e) => setGenreFilter(e.target.value)}
                 className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="">All Genres</option>
-{genresLoading ? (
-                  <option>Loading...</option>
+                <option value="">Tất cả thể loại</option>
+                {genresLoading ? (
+                  <option>Đang tải...</option>
                 ) : mainGenres.map(genre => (
                   <option key={genre.id} value={genre.name_jp}>{genre.name_jp} ({genre.name_vn})</option>
                 ))}
@@ -384,9 +365,9 @@ export default function CreateTaskPage() {
                 onChange={(e) => setTopicFilter(e.target.value)}
                 className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="">All Topics</option>
-{topicsLoading ? (
-                  <option>Loading...</option>
+                <option value="">Tất cả chủ đề</option>
+                {topicsLoading ? (
+                  <option>Đang tải...</option>
                 ) : mainTopics.map(topic => (
                   <option key={topic.id} value={topic.name_jp}>{topic.name_jp} ({topic.name_vn})</option>
                 ))}
@@ -394,17 +375,17 @@ export default function CreateTaskPage() {
             </div>
 
             <p className="text-gray-600 mb-4 font-medium">
-              Selected: <span className="text-blue-600 font-bold">{selectedQuestionIds.length}</span> question(s)
+              Đã chọn: <span className="text-blue-600 font-bold">{selectedQuestionIds.length}</span> câu hỏi
             </p>
 
-            {/* Question List */}
+            {/* Danh sách câu hỏi */}
             <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
               {loading ? (
-                <p className="text-center text-gray-500 py-4">Loading questions...</p>
+                <p className="text-center text-gray-500 py-4">Đang tải câu hỏi...</p>
               ) : error ? (
                 <p className="text-center text-red-500 py-4">{error}</p>
               ) : filteredQuestions.length === 0 ? (
-                <p className="text-center text-gray-500 py-4">No questions found.</p>
+                <p className="text-center text-gray-500 py-4">Không tìm thấy câu hỏi nào.</p>
               ) : (
                 filteredQuestions.map((question) => (
                   <div
@@ -430,7 +411,7 @@ export default function CreateTaskPage() {
                         </p>
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-800">
-                            Level {question.level}
+                            Cấp độ {question.level}
                           </span>
                           {question.subGenre && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
@@ -451,11 +432,11 @@ export default function CreateTaskPage() {
             </div>
           </div>
 
-          {/* Student Assignment */}
+          {/* Giao bài cho học sinh */}
           <div className="mb-8">
             <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Users className="w-6 h-6" />
-              Assign to Students
+              Giao bài cho học sinh
             </h3>
             
             <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
@@ -471,23 +452,23 @@ export default function CreateTaskPage() {
                   }}
                   className="w-5 h-5 text-blue-600 rounded cursor-pointer"
                 />
-                <span className="font-medium text-gray-800">Assign to all students</span>
+                <span className="font-medium text-gray-800">Giao cho tất cả học sinh</span>
               </label>
               <p className="text-sm text-gray-500 mt-1 ml-8">
-                If checked, all students can see this task. If not, select specific students below.
+                Nếu chọn, tất cả học sinh đều có thể xem bài tập này. Nếu không, hãy chọn từng học sinh cụ thể bên dưới.
               </p>
             </div>
 
             {!assignToAll && (
               <div>
                 <p className="text-gray-600 mb-4 font-medium">
-                  Selected: <span className="text-green-600 font-bold">{selectedStudentIds.length}</span> student(s)
+                  Đã chọn: <span className="text-green-600 font-bold">{selectedStudentIds.length}</span> học sinh
                 </p>
                 
                 {loadingStudents ? (
-                  <p className="text-center text-gray-500">Loading students...</p>
+                  <p className="text-center text-gray-500">Đang tải danh sách học sinh...</p>
                 ) : students.length === 0 ? (
-                  <p className="text-center text-gray-500">No students found.</p>
+                  <p className="text-center text-gray-500">Không tìm thấy học sinh nào.</p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-4 bg-gray-50">
                     {students.map((student) => (
@@ -523,7 +504,7 @@ export default function CreateTaskPage() {
                           <div>
                             <p className="font-semibold text-gray-800">{student.username}</p>
                             <p className="text-sm text-gray-500">
-                              JLPT Level: {student.jlpt_level || 'N/A'} • Points: {student.total_points}
+                              Cấp độ JLPT: {student.jlpt_level || 'Chưa có'} • Điểm tích lũy: {student.total_points}
                             </p>
                           </div>
                         </div>
@@ -535,14 +516,14 @@ export default function CreateTaskPage() {
             )}
           </div>
 
-          {/* Submit Buttons */}
+          {/* Nút gửi đi */}
           <div className="flex gap-4">
             <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
               <Plus className="w-5 h-5" />
-              Create Task
+              Tạo bài tập
             </button>
             <Link href="/teacher/tasks" className="bg-gray-200 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors inline-flex items-center">
-              Cancel
+              Hủy bỏ
             </Link>
           </div>
         </form>

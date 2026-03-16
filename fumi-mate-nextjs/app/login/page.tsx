@@ -15,68 +15,65 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const { login } = useAuth();
 
-const handleSubmit = async (e: React.FormEvent) => {
-  console.log("HANDLE SUBMIT CALLED"); // 👈
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  e.preventDefault();
+    const username = formData.username.trim();
+    const password = formData.password.trim();
 
-  const username = formData.username.trim();
-  const password = formData.password.trim();
-
-  if (!username || !password) {
-    setMessage("Please fill in all fields");
-    return;
-  }
-
-  try {
-    const res = await fetch(API_ENDPOINTS.LOGIN, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await res.json();
-    console.log("LOGIN RESPONSE (browser):", data);
-
-    if (!res.ok) {
-      setMessage(data.message || "Login failed");
+    if (!username || !password) {
+      setMessage("Vui lòng nhập đầy đủ tất cả các trường");
       return;
     }
 
-    // ✅ LƯU TOKEN
-    localStorage.setItem("access_token", data.access_token);
-    console.log("TOKEN SAVED:", data.access_token);
+    try {
+      const res = await fetch(API_ENDPOINTS.LOGIN, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-    // ✅ SET AUTH CONTEXT
-    login({
-      username: data.user.username,
-      userRole: data.user.role,
-    });
+      const data = await res.json();
 
-    setMessage("Login successful! Redirecting...");
+      if (!res.ok) {
+        // Ưu tiên thông báo lỗi từ Server, nếu không có thì dùng câu tiếng Việt
+        setMessage(data.message || "Đăng nhập thất bại");
+        return;
+      }
 
-    router.push(`/${data.user.role}/tasks`);
-  } catch (err) {
-    console.error(err);
-    setMessage("Server error, please try again later");
-  }
-};
+      // ✅ LƯU TOKEN
+      localStorage.setItem("access_token", data.access_token);
 
+      // ✅ SET AUTH CONTEXT
+      login({
+        username: data.user.username,
+        userRole: data.user.role,
+      });
 
+      setMessage("Đăng nhập thành công! Đang chuyển hướng...");
 
+      // Đợi một chút để người dùng kịp thấy thông báo thành công
+      setTimeout(() => {
+        router.push(`/${data.user.role}/tasks`);
+      }, 1000);
 
+    } catch (err) {
+      console.error(err);
+      setMessage("Lỗi máy chủ, vui lòng thử lại sau");
+    }
+  };
 
   return (
     <section className="min-h-screen flex items-start justify-center py-20">
-      <div className="max-w-md w-full bg-white ">
-        <h2 className="text-3xl font-title font-bold text-start mb-8">Login</h2>
+      <div className="max-w-md w-full bg-white px-4">
+        <h2 className="text-3xl font-title font-bold text-start mb-8">Đăng nhập</h2>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
-              Username
+              Tên đăng nhập
             </label>
             <input
               type="text"
@@ -84,14 +81,14 @@ const handleSubmit = async (e: React.FormEvent) => {
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               className="custom-input"
-              placeholder="Enter your username"
+              placeholder="Nhập tên đăng nhập của bạn"
               required
             />
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-              Password
+              Mật khẩu
             </label>
             <input
               type="password"
@@ -99,14 +96,14 @@ const handleSubmit = async (e: React.FormEvent) => {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="custom-input"
-              placeholder="Enter your password"
+              placeholder="Nhập mật khẩu"
               required
             />
           </div>
 
           {message && (
             <div className={`text-center p-3 rounded-lg ${
-              message.includes('successful') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              message.includes('thành công') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
             }`}>
               {message}
             </div>
@@ -117,16 +114,16 @@ const handleSubmit = async (e: React.FormEvent) => {
               type="submit"
               className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors w-full md:w-auto"
             >
-              Login
+              Đăng nhập
             </button>
           </div>
         </form>
 
         <div className="text-center mt-6">
           <p className="text-gray-600">
-            Don't have an account?{' '}
+            Chưa có tài khoản?{' '}
             <Link href="/register" className="text-primary font-semibold hover:underline">
-              Register
+              Đăng ký ngay
             </Link>
           </p>
         </div>

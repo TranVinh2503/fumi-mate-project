@@ -14,8 +14,8 @@ export default function Footer() {
               <GraduationCap className="w-8 h-8" />
               <span className="font-title">日本語</span>
             </Link>
-            <p className="text-gray-600 mb-6">
-              Clear your desk. Tie your hair up. Grab a coffee, and just start.
+<p className="text-gray-600 mb-6">
+              Dọn bàn học. Thắt tóc. Pha cà phê, và bắt đầu thôi.
             </p>
             <div className="flex gap-4">
               <a href="#" className="text-gray-600 hover:text-primary transition-colors">
@@ -46,7 +46,7 @@ export default function Footer() {
           {/* Right: Links */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <h4 className="font-semibold text-primary mb-4">Practice</h4>
+<h4 className="font-semibold text-primary mb-4">Luyện tập</h4>
               <ul className="space-y-2">
                 <li><Link href="#" className="text-gray-600 hover:text-primary transition-colors">Kanji</Link></li>
                 <li><Link href="#" className="text-gray-600 hover:text-primary transition-colors">Grammar</Link></li>
@@ -75,7 +75,7 @@ export default function Footer() {
           <span className="hidden md:inline">•</span>
           <Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link>
           <span className="hidden md:inline">•</span>
-          <span>&copy; 2025 日本語 Inc. All Rights Reserved.</span>
+          <span>&copy; 2026 Hanu.</span>
         </div>
       </div>
     </footer>

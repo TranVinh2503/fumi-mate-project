@@ -11,13 +11,12 @@ export default function StudentSubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   useEffect(() => {
-    // TODO: Fetch submissions from Flask API
+    // TODO: Lấy dữ liệu bài nộp từ Flask API
     // const response = await fetch('/api/student/submissions');
     // const data = await response.json();
     // setSubmissions(data);
     
-    // Mock data - assuming current user is student with ID student1
-
+    // Dữ liệu giả định - giả sử ID học sinh hiện tại là student1
     const studentSubmissions = getSubmissionsByStudentId("student1");
     setSubmissions(studentSubmissions);
   }, []);
@@ -28,19 +27,19 @@ export default function StudentSubmissionsPage() {
 
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
-      <h2 className="text-4xl font-title font-bold mb-8">My Submissions</h2>
+      <h2 className="text-4xl font-title font-bold mb-8">Bài làm của tôi</h2>
 
       {submissions.length > 0 ? (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100 border-2">
+              <thead className="bg-gray-100 border-2 border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Task</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Updated</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">AI Score</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Teacher Score</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Bài tập</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Trạng thái</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Cập nhật</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm AI</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm GV</th>
                 </tr>
               </thead>
               <tbody>
@@ -51,15 +50,16 @@ export default function StudentSubmissionsPage() {
                     className="clickable-row border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <td className="px-6 py-4 font-semibold">
-                      {'—'}
+                      {/* Hiển thị tiêu đề bài tập nếu có, nếu không để mặc định */}
+                      {sub.id ? `Bài viết #${sub.id.slice(-4)}` : '—'}
                     </td>
                     <td className="px-6 py-4">
                       {sub.status === 2 ? (
-                        <span className="badge badge-success">AI Graded</span>
+                        <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded text-xs">AI đã chấm</span>
                       ) : sub.status === 3 ? (
-                        <span className="badge badge-info">Teacher Graded</span>
+                        <span className="badge badge-info bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">GV đã chấm</span>
                       ) : (
-                        <span className="badge badge-secondary">Draft</span>
+                        <span className="badge badge-secondary bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Bản nháp</span>
                       )}
                     </td>
 
@@ -88,8 +88,8 @@ export default function StudentSubmissionsPage() {
         </div>
       ) : (
         <div className="text-center mt-12">
-          <img src="/images/crying_girl.png" alt="No submissions" className="mx-auto mb-4" style={{ width: '200px' }} />
-          <p className="text-gray-500 text-lg">You haven't submitted any writing tests yet.</p>
+          <img src="/images/crying_girl.png" alt="Không có bài nộp" className="mx-auto mb-4" style={{ width: '200px' }} />
+          <p className="text-gray-500 text-lg">Bạn chưa có bài viết nào được nộp.</p>
         </div>
       )}
     </section>

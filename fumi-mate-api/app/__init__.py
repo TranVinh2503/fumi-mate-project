@@ -10,6 +10,7 @@ from .routes.task import task_bp
 from .api.student import student_bp
 from .api.teacher import teacher_bp
 from .api.main import main_bp
+from .api.admin import admin_bp
 
 def create_app():
     load_dotenv()
@@ -60,5 +61,6 @@ def create_app():
     app.register_blueprint(task_bp, url_prefix="/api/task")
     app.register_blueprint(student_bp, url_prefix="/api/student")
     app.register_blueprint(teacher_bp, url_prefix="/api/teacher")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     return app

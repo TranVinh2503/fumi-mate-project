@@ -1,6 +1,20 @@
 // User Types
 export type UserType = 'student' | 'teacher' | 'reviewer';
 
+export interface Genre {
+  id: number;
+  parent_id: number;
+  name_jp: string;
+  name_vn: string;
+}
+
+export interface Topic {
+  id: number;
+  parent_id: number;
+  name_jp: string;
+  name_vn: string;
+}
+
 export interface User {
   id: string;
   name: string;

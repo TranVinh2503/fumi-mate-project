@@ -23,8 +23,13 @@ export const API_ENDPOINTS = {
   TEACHER_SUBMISSIONS: `${API_BASE_URL}/api/teacher/submissions`,
   TEACHER_TASK_DETAIL: (taskId: number) => `${API_BASE_URL}/api/teacher/tasks/${taskId}`,
 
-  //question
-  QUESTION_QUERY: `${API_BASE_URL}/api/task/questions`
+// Question Bank
+  QUESTION_QUERY: `${API_BASE_URL}/api/task/questions`,
+  
+  // Admin
+  ADMIN_GENRES: `${API_BASE_URL}/api/admin/genres`,
+  ADMIN_TOPICS: `${API_BASE_URL}/api/admin/topics`,
+  ADMIN_QUESTION_CREATE: `${API_BASE_URL}/api/admin/question-bank`
 };
 
 export default API_BASE_URL;

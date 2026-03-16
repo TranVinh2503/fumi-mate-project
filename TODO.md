@@ -1,23 +1,23 @@
-# Database Structure Update: Question Bank + Genres/Topics
+# Task: Replace hardcoded genre/topic mappings with API fetches in teacher task create page
 
-Status: In Progress
+## Steps to complete:
 
-## Steps:
+### 1. ✅ Create TODO.md (done)
 
-### 1. ✅ Create new models (genres.py, topics.py)
-### 2. ✅ Update existing models (question_bank.py, __init__.py)
-### 3. ✅ Generate Alembic migration for new tables/FKs
-### 4. ✅ Implement data migration in migration script
-### 5. ✅ Update code references:
-   - ✅ seed.py (insert genres/topics first)
-   - ✅ app/routes/task.py (use IDs)
-   - ✅ app/api/teacher.py, student.py (serialize names via rel)
-   - ⏳ app/services/gemini_service.py, ai_services.py (map to IDs)
-### 6. ⏳ Alembic upgrade head
-### 7. Test: python fumi-mate-api/seed.py
-### 8. Test APIs with Postman
-### 9. Update docs if needed
-### 10. Complete ✅
+### 2. ✅ Confirm apiConfig.ts has ADMIN_GENRES & ADMIN_TOPICS (done)
 
-Next step: Apply migration.
+### 3. ✅ Updated filter logic to use dynamic mappings
+### 4. ✅ Replaced hardcoded dropdown options with dynamic mainGenres/mainTopics
+### 5. Test frontend
+
+### 4. Test frontend:
+   - Check dropdowns populate with real data
+   - Verify filtering works with sub-genre/topic names
+
+### 5. If auth error on admin APIs:
+   - Edit fumi-mate-api/app/api/admin.py to allow teacher role on GET /genres, /topics
+
+### 6. Seed data if needed and final test
+
+### 7. attempt_completion
 

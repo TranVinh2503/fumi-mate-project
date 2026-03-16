@@ -17,4 +17,12 @@ class Topic(db.Model):
 
     def __repr__(self):
         return f'<Topic {self.id}: {self.name_jp}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name_jp': self.name_jp,
+            'name_vn': self.name_vn,
+            'parent_id': self.parent_id
+        }
 

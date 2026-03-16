@@ -18,3 +18,14 @@ class QuestionBank(db.Model):
 
     def __repr__(self):
         return f'<QuestionBank {self.id} (Genre:{self.sub_genre_id}, Topic:{self.sub_topic_id}, Level:{self.level})>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'sub_genre_id': self.sub_genre_id,
+            'sub_topic_id': self.sub_topic_id,
+            'content': self.content,
+            'level': self.level,
+            'required_points': self.required_points,
+            'similarity_hash': self.similarity_hash
+        }

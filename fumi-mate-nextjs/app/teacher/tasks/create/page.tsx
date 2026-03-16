@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { Genre, Topic } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Search, Users } from 'lucide-react';
@@ -46,6 +47,12 @@ export default function CreateTaskPage() {
   // States filters
   const [genreFilter, setGenreFilter] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // Đổi từ levelFilter sang topicFilter
+
+  // Dynamic genres and topics
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [genresLoading, setGenresLoading] = useState(false);
+  const [topicsLoading, setTopicsLoading] = useState(false);
   
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -67,6 +74,35 @@ export default function CreateTaskPage() {
           setLoading(false);
           return;
         }
+
+        // Fetch genres
+        setGenresLoading(true);
+        const genresRes = await fetch(API_ENDPOINTS.ADMIN_GENRES, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (genresRes.ok) {
+          const genresData = await genresRes.json();
+          setGenres(genresData.genres || []);
+          console.log(genresData.genres);
+        }
+        setGenresLoading(false);
+
+        // Fetch topics
+        setTopicsLoading(true);
+        const topicsRes = await fetch(API_ENDPOINTS.ADMIN_TOPICS, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (topicsRes.ok) {
+          const topicsData = await topicsRes.json();
+          setTopics(topicsData.topics || []);
+        }
+        setTopicsLoading(false);
 
         // Fetch questions
         const questionsRes = await fetch(API_ENDPOINTS.QUESTION_QUERY, {
@@ -97,35 +133,46 @@ export default function CreateTaskPage() {
           const studentsData = await studentsRes.json();
           setStudents(studentsData.students || []);
         }
+        setLoadingStudents(false);
       } catch (err: any) {
         console.error(err);
         setError(err.message);
       } finally {
         setLoading(false);
-        setLoadingStudents(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, []); 
 
-  // Bảng tra cứu mapping Thể loại
-  const GENRE_MAPPING: Record<string, string[]> = {
-    '手紙': ['お礼状', '問い合わせ状', '助言書'],
-    'スピーチ': ['ある話題について話す', '経験について語る'],
-    '意見・感想': ['作品についての考察', '問題を分析し、解決策を提案する', '視点を比較して選択する']
-  };
+  // Dynamic mappings from fetched data
+  const genreMapping = useMemo(() => {
+    const mapping: Record<string, string[]> = {};
+    genres.forEach(g => {
+      if (g.parent_id === 0) {
+        mapping[g.name_jp] = genres
+          .filter(sub => sub.parent_id === g.id)
+          .map(sub => sub.name_jp);
+      }
+    });
+    return mapping;
+  }, [genres]);
 
-  // Bảng tra cứu mapping Chủ đề (dựa vào file seed)
-  const TOPIC_MAPPING: Record<string, string[]> = {
-    '観光': ['ホームステイ'],
-    '友人': ['同級生', '思いやりと励ましを示す'],
-    '教育': ['キャリアガイダンス', '学業上のプレッシャー'],
-    '文化と芸術': ['膜', '映画'],
-    'ライフスタイル': ['学生生活', 'ライフスタイル'],
-    '社会': ['人間の価値観'],
-    '自己': ['人生哲学', '失敗と成長']
-  };
+  const topicMapping = useMemo(() => {
+    const mapping: Record<string, string[]> = {};
+    topics.forEach(t => {
+      if (t.parent_id === 0) {
+        mapping[t.name_jp] = topics
+          .filter(sub => sub.parent_id === t.id)
+          .map(sub => sub.name_jp);
+      }
+    });
+    return mapping;
+  }, [topics]);
+
+  // Main genres and topics for dropdowns
+  const mainGenres = useMemo(() => genres.filter(g => g.parent_id === 0), [genres]);
+  const mainTopics = useMemo(() => topics.filter(t => t.parent_id === 0), [topics]);
 
   // Filter questions based on search and filters
   useEffect(() => {
@@ -143,7 +190,7 @@ export default function CreateTaskPage() {
 
     // Lọc theo Genre
     if (genreFilter) {
-      const allowedSubGenres = GENRE_MAPPING[genreFilter] || [];
+      const allowedSubGenres = genreMapping[genreFilter] || [];
       filtered = filtered.filter(q => 
         q.subGenre?.nameJp && allowedSubGenres.includes(q.subGenre.nameJp)
       );
@@ -151,14 +198,14 @@ export default function CreateTaskPage() {
 
     // Lọc theo Topic
     if (topicFilter) {
-      const allowedSubTopics = TOPIC_MAPPING[topicFilter] || [];
+      const allowedSubTopics = topicMapping[topicFilter] || [];
       filtered = filtered.filter(q => 
         q.subTopic?.nameJp && allowedSubTopics.includes(q.subTopic.nameJp)
       );
     }
 
     setFilteredQuestions(filtered);
-  }, [questionBank, searchTerm, genreFilter, topicFilter]);
+  }, [questionBank, searchTerm, genreFilter, topicFilter, genreMapping, topicMapping]);
 
   const toggleQuestionSelection = (questionId: number) => {
     setSelectedQuestionIds(prev =>
@@ -324,9 +371,11 @@ export default function CreateTaskPage() {
                 className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">All Genres</option>
-                <option value="手紙">手紙 (Thư)</option>
-                <option value="スピーチ">スピーチ (Phát biểu)</option>
-                <option value="意見・感想">意見・感想 (Ý kiến/Cảm nghĩ)</option>
+{genresLoading ? (
+                  <option>Loading...</option>
+                ) : mainGenres.map(genre => (
+                  <option key={genre.id} value={genre.name_jp}>{genre.name_jp} ({genre.name_vn})</option>
+                ))}
               </select>
 
               {/* Lọc theo Chủ đề (Topic) */}
@@ -336,13 +385,11 @@ export default function CreateTaskPage() {
                 className="custom-select p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">All Topics</option>
-                <option value="観光">観光 (Du lịch)</option>
-                <option value="友人">友人 (Bạn bè)</option>
-                <option value="教育">教育 (Giáo dục)</option>
-                <option value="文化と芸術">文化と芸術 (Văn hóa - Nghệ thuật)</option>
-                <option value="ライフスタイル">ライフスタイル (Lối sống)</option>
-                <option value="社会">社会 (Xã hội)</option>
-                <option value="自己">自己 (Bản thân)</option>
+{topicsLoading ? (
+                  <option>Loading...</option>
+                ) : mainTopics.map(topic => (
+                  <option key={topic.id} value={topic.name_jp}>{topic.name_jp} ({topic.name_vn})</option>
+                ))}
               </select>
             </div>
 

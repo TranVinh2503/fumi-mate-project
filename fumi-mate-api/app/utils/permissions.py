@@ -2,7 +2,7 @@ from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
 
-def role_required(role):
+def role_required(roles):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -20,10 +20,10 @@ def role_required(role):
                 user_role = claims.get("role")
                 user_identity = get_jwt_identity()
                 
-                print(f"DEBUG CHECK QUYỀN: Yêu cầu quyền [{role}], User identity: {user_identity}, User đang có quyền [{user_role}]")
+                print(f"DEBUG CHECK QUYỀN: Yêu cầu quyền {roles}, User identity: {user_identity}, User đang có quyền [{user_role}]")
 
-                if str(user_role).strip().lower() != str(role).strip().lower():
-                    return jsonify({"error": f"Permission denied. Required: {role}, got: {user_role}"}), 403
+                if str(user_role).strip().lower() not in [str(r).strip().lower() for r in (roles if isinstance(roles, list) else [roles])]:
+                    return jsonify({"error": f"Permission denied. Required one of {roles}, got: {user_role}"}), 403
 
                 return f(*args, **kwargs)
             except Exception as e:

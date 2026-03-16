@@ -101,7 +101,7 @@ export default function Navbar() {
             )}
           </div>
         </>
-      ) : user.userRole === 'teacher' ? (
+) : user.userRole === 'teacher' ? (
         <>
           {/* Teacher Links */}
           <Link href="/teacher/tasks" className="px-4 text-xs hover:text-primary transition-colors uppercase">
@@ -116,18 +116,17 @@ export default function Navbar() {
         </>
       ) : user.userRole === 'admin' ? (
         <>
-          {/* Admin Links – can reuse teacher links + admin extras if needed */}
-          <Link href="/teacher/tasks" className="px-4 text-xs hover:text-primary transition-colors uppercase">
-            Task Management
+          <Link href="/admin" className="px-4 text-xs hover:text-primary transition-colors uppercase">
+            Admin Dashboard
+          </Link>
+          <Link href="/admin/question-bank" className="px-4 text-xs hover:text-primary transition-colors uppercase">
+            Question Bank
           </Link>
           <Link href="/teacher/submissions" className="px-4 text-xs hover:text-primary transition-colors uppercase">
             Submission Review
           </Link>
           <Link href="#contact" className="px-4 text-xs hover:text-primary transition-colors uppercase">
             Contact
-          </Link>
-          <Link href="/admin/users" className="px-4 text-xs hover:text-primary transition-colors uppercase">
-            Manage Users
           </Link>
         </>
       ) : null}

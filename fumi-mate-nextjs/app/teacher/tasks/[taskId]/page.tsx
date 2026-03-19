@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getTaskById, getQuestionById, getSubmissionsForTask } from '@/lib/mockData';
 import { Task, Submission } from '@/lib/types';
 import { ArrowLeft, Users, FileText, Calendar, Edit } from 'lucide-react';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
@@ -14,7 +13,7 @@ export default function TeacherTaskDetailPage() {
   const taskId = params.taskId as string;
 
   const [task, setTask] = useState<Task | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]); // TODO: Fetch real submissions
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +39,7 @@ export default function TeacherTaskDetailPage() {
         
         const data = await response.json();
         setTask(data.task);
-        // Lưu ý: Bài nộp (submissions) có thể cần một API call riêng hoặc bổ sung sau
+        console.log('Real task data:', data.task);
 
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
@@ -81,12 +80,13 @@ export default function TeacherTaskDetailPage() {
     );
   }
 
-  const question = getQuestionById(task.question_id);
+  // Use real questions from backend API
+  const firstQuestion = task?.questions?.[0];
 
   return (
     <section className="container mx-auto section-padding mt-5 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8">  
         <div className="flex items-center gap-4">
           <Link
             href="/teacher/tasks"
@@ -123,13 +123,18 @@ export default function TeacherTaskDetailPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung câu hỏi</label>
                 <p className="text-gray-900 bg-gray-50 p-3 rounded-lg italic">
-                  "{question?.question_text || 'Không có dữ liệu'}"
+                  "{firstQuestion?.content || 'Không có dữ liệu câu hỏi'}"
                 </p>
+                {firstQuestion?.subGenre && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Thể loại: {firstQuestion.subGenre.nameVn} ({firstQuestion.subGenre.nameJp})
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ khó</label>
                 <span className="badge badge-info bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">
-                  {question?.difficulty_level || 'N/A'}
+                  {firstQuestion?.level ? `N${6 - firstQuestion.level}` : 'N/A'}
                 </span>
               </div>
             </div>
@@ -143,13 +148,14 @@ export default function TeacherTaskDetailPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Hạn chót</label>
                   <p className="text-gray-900 font-medium">
-                    {new Date(task.deadline).toLocaleDateString('vi-VN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {task.dueDate || task.deadline ? 
+                      new Date(task.dueDate || task.deadline).toLocaleDateString('vi-VN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : 'Không có hạn'}
                   </p>
                 </div>
               </div>

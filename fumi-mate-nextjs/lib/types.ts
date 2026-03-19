@@ -23,10 +23,31 @@ export interface User {
 
 // Task Types
 export interface Task {
-  id: string;
-  question_id: string;
-  teacher_id: string;
-  deadline: string; // ISO datetime
+  id: number | string;
+  title: string;
+  description?: string;
+  difficulty?: string;
+  dueDate?: string;
+  deadline?: string;
+  createdAt?: string;
+  isDone?: boolean;
+  questionCount?: number;
+  questions?: Array<{
+    id: number;
+    content: string;
+    level: number;
+    subGenre: {
+      id: number;
+      nameJp: string;
+      nameVn: string;
+    };
+    subTopic: {
+      id: number;
+      nameJp: string;
+      nameVn: string;
+    };
+  }>;
+  assignedStudents?: number[];
 }
 
 // Question Types

@@ -93,11 +93,12 @@ export default function TeacherTasksPage() {
             <table className="w-full">
               <thead className="bg-gray-100 border-b border-gray">
                 <tr>
-<th className="px-6 py-4 text-left font-semibold text-gray-700">ID Nhiệm vụ</th>
-<th className="px-6 py-4 text-left font-semibold text-gray-700">Tiêu đề</th>
-<th className="px-6 py-4 text-left font-semibold text-gray-700">Độ khó</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">ID Nhiệm vụ</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Tiêu đề</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Độ khó</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Hạn chót</th>
-<th className="px-6 py-4 text-center font-semibold text-gray-700">Thao tác</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Số câu hỏi</th>
+                  <th className="px-6 py-4 text-center font-semibold text-gray-700">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,6 +115,9 @@ export default function TeacherTasksPage() {
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-primary">
+                      {task.questionCount || 0}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">

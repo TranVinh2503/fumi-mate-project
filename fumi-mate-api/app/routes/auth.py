@@ -102,3 +102,43 @@ def me():
         "username": user.username,
         "role": user.role
     }
+
+@auth_bp.route("/change-password", methods=["POST"])
+@jwt_required()
+def change_password():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data"}), 400
+
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+
+        if not current_password or not new_password:
+            return jsonify({"error": "Missing current_password or new_password"}), 400
+
+        if len(new_password) < 6:
+            return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+        identity = get_jwt_identity()
+        user_id = int(str(identity))  # Convert to int safely
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        if not check_password_hash(user.password_hash, current_password):
+            return jsonify({"error": "Current password incorrect"}), 401
+
+        user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Password changed successfully"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Change password error: {e}")
+        return jsonify({"error": "Server error"}), 500

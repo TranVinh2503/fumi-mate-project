@@ -46,16 +46,19 @@ export default function ProfileDropdown({ username, role, onLogout }: ProfileDro
 
           <div className="py-2">
            
-            <Link
-              href="/settings"
-              className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-              onClick={() => setIsOpen(false)}
+            <button
+              onClick={() => {
+                window.location.href = "/settings";
+                setIsOpen(false);
+              }}
+              className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-50 transition-colors text-left"
             >
               <Settings className="w-5 h-5 text-gray-600" />
               <div>
                 <p className="font-semibold text-sm">Đổi Mật Khẩu</p>
               </div>
-            </Link>
+            </button>
+
           </div>
 
           <div className="border-t border-gray-200">

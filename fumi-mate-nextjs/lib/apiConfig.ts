@@ -29,7 +29,10 @@ export const API_ENDPOINTS = {
   // Admin
   ADMIN_GENRES: `${API_BASE_URL}/api/admin/genres`,
   ADMIN_TOPICS: `${API_BASE_URL}/api/admin/topics`,
-  ADMIN_QUESTION_CREATE: `${API_BASE_URL}/api/admin/question-bank`
+  ADMIN_QUESTION_CREATE: `${API_BASE_URL}/api/admin/question-bank`,
+
+  //change
+  CHANGE_PASSWORD: `${API_BASE_URL}/api/auth/change-password`
 };
 
 export default API_BASE_URL;

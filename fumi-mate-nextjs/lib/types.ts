@@ -58,19 +58,28 @@ export interface Question {
 }
 
 // Submission Types
-export type SubmissionStatus = 0 | 1 | 2 | 3 | 4; // 0: draft, 1: submitted, 2: AI graded, 3: teacher graded, 4: reviewed
+export type SubmissionStatus = 'draft' | 'submitted' | 'ai_graded' | 'teacher_graded' | 'reviewed';
 
 export interface Submission {
-  id: string;
-  task_id: string;
-  student_id: string;
+  id: number | string;
+  task_id: number | string;
+  student_id: number | string;
+  student_name?: string;
+  task_title?: string;
   content: string;
   ai_score?: number;
-  ai_feedback?: string;
+  ai_feedback?: string | object;
   teacher_score?: number;
   teacher_feedback?: string;
-  submission_time?: string; // ISO datetime
   status: SubmissionStatus;
+  submission_time?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SubmissionWithDetails extends Submission {
+  student_name: string;
+  task_title: string;
 }
 
 // API Response Types

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getSubmissionById, getTaskById, getQuestionById } from '@/lib/mockData';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { Submission } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
 
@@ -37,26 +37,38 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // TODO: Fetch submission from Flask API
-    // const response = await fetch(`/api/teacher/submissions/${submissionId}`);
-    // const data = await response.json();
-    // setSubmission(data);
-    
-    const foundSubmission = getSubmissionById(submissionId);
-    setSubmission(foundSubmission || null);
-    
-    if (foundSubmission) {
-      setTeacherScore(foundSubmission.teacher_score?.toString() || '');
-      setTeacherFeedback(foundSubmission.teacher_feedback || '');
-      
-      if (foundSubmission.ai_feedback) {
-        const parsed = parseJSON<FeedbackData>(foundSubmission.ai_feedback, {});
-        setAiFeedback(parsed);
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const fetchSubmission = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.TEACHER_SUBMISSIONS + `/${submissionId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch submission');
+        }
+        const data = await response.json();
+        setSubmission(data.submission);
+        setTeacherScore(data.submission.teacher_score?.toString() || '');
+        setTeacherFeedback(data.submission.teacher_feedback || '');
+        
+        if (data.submission.ai_feedback) {
+          const parsed = parseJSON<FeedbackData>(data.submission.ai_feedback, {});
+          setAiFeedback(parsed);
+        }
+      } catch (err) {
+        console.error('Error fetching submission:', err);
       }
-    }
+    };
+
+    fetchSubmission();
   }, [submissionId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const score = parseInt(teacherScore);
@@ -65,24 +77,27 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
       return;
     }
     
-    // TODO: Submit grade to Flask API
-    // const response = await fetch(`/api/teacher/grade-submission/${submissionId}`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ teacherScore: score, teacherFeedback }),
-    // });
-    
-    console.log('Grading submission:', {
-      submissionId,
-      teacherScore: score,
-      teacherFeedback,
-      timestamp: new Date().toISOString(),
-    });
-    
-    setMessage('✅ Grade submitted successfully!');
-    setTimeout(() => {
-      router.push('/teacher/submissions');
-    }, 1500);
+    const token = localStorage.getItem('access_token');
+    try {
+      const response = await fetch(`/api/teacher/grade-submission/${submissionId}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ teacher_score: score, teacher_feedback }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to grade submission');
+      }
+      setMessage('✅ Grade submitted successfully!');
+      setTimeout(() => {
+        router.push('/teacher/submissions');
+      }, 1500);
+    } catch (err) {
+      setMessage('❌ Error submitting grade');
+      console.error('Grade submission error:', err);
+    }
   };
 
   if (!submission) {
@@ -118,27 +133,20 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
             <div>
               <p className="text-sm text-gray-600">Student:</p>
               <p className="font-semibold text-lg">
-                {submission.student_id}
+{submission.student_name || submission.student_id}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Task:</p>
               <p className="font-semibold text-lg">
-                {(function() {
-                  const task = getTaskById(submission.task_id);
-                  if (task) {
-                    const question = getQuestionById(task.question_id);
-                    return question?.question_text || '—';
-                  }
-                  return '—';
-                })()}
+                {submission.task_title || 'N/A'}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">AI Score:</p>
+              {/* <p className="text-sm text-gray-600">AI Score:</p>
               <p className="font-semibold text-lg text-blue-600">
                 {submission.ai_score || '—'}
-              </p>
+              </p> */}
             </div>
           </div>
         </div>

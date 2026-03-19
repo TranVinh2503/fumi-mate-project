@@ -2,9 +2,14 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import json
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
+import json
 from app.models.task import Task, TaskQuestion
 from app.models.question_bank import QuestionBank
 from app.models.user import User
+from app.models.submission import Submission
 from app.extensions import db
 from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
@@ -251,3 +256,149 @@ def get_task_detail(task_id):
     except Exception as e:
         print(f"Error fetching task details: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+@teacher_bp.route('/submissions', methods=['GET'])
+@jwt_required()
+@role_required('teacher')
+def get_teacher_submissions():
+    """
+    Get all submissions for teacher's tasks
+    """
+    try:
+        user_id = get_current_user_id()
+        # Get teacher's tasks
+        teacher_tasks = Task.query.filter_by(created_by=user_id).all()
+        task_ids = [task.id for task in teacher_tasks]
+        
+        submissions = Submission.query.filter(Submission.task_id.in_(task_ids)).all()
+        
+        submissions_data = []
+        for sub in submissions:
+            student = User.query.get(sub.student_id)
+            task = Task.query.get(sub.task_id)
+            submissions_data.append({
+                'id': sub.id,
+                'student_id': sub.student_id,
+                'student_name': student.username if student else 'Unknown',
+                'task_id': sub.task_id,
+                'task_title': task.title if task else 'Unknown',
+                'content': sub.content[:100] + '...' if sub.content and len(sub.content) > 100 else sub.content,
+                'ai_score': sub.ai_score,
+                'teacher_score': sub.teacher_score,
+                'status': sub.status,
+                'submission_time': sub.created_at.isoformat() if sub.created_at else None,
+            })
+        
+        return jsonify({
+            'success': True,
+            'submissions': submissions_data,
+            'total': len(submissions_data)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching teacher submissions: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@teacher_bp.route('/submissions/<int:submission_id>', methods=['GET'])
+@jwt_required()
+@role_required('teacher')
+def get_submission_detail(submission_id):
+    """
+    Get detailed submission for grading
+    """
+    try:
+        user_id = get_current_user_id()
+        
+        sub = Submission.query.get(submission_id)
+        if not sub:
+            return jsonify({'error': 'Submission not found'}), 404
+        
+        task = Task.query.get(sub.task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        student = User.query.get(sub.student_id)
+        
+        ai_feedback = {}
+        if sub.ai_feedback:
+            try:
+                ai_feedback = json.loads(sub.ai_feedback)
+            except:
+                ai_feedback = {'feedback_text': sub.ai_feedback}
+        
+        data = {
+            'id': sub.id,
+            'student_id': sub.student_id,
+            'student_name': student.username if student else 'Unknown',
+            'task_id': sub.task_id,
+            'task_title': task.title,
+            'content': sub.content,
+            'ai_score': sub.ai_score,
+            'ai_feedback': ai_feedback,
+            'teacher_score': sub.teacher_score,
+            'teacher_feedback': sub.teacher_feedback,
+            'status': sub.status,
+            'created_at': sub.created_at.isoformat() if sub.created_at else None,
+            'updated_at': sub.updated_at.isoformat() if sub.updated_at else None,
+        }
+        
+        return jsonify({
+            'success': True,
+            'submission': data
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching submission detail: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@teacher_bp.route('/grade-submission/<int:submission_id>', methods=['POST'])
+@jwt_required()
+@role_required('teacher')
+def grade_submission(submission_id):
+    """
+    Grade a submission
+    Body: {"teacher_score": int, "teacher_feedback": str}
+    """
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json()
+        
+        if not data or 'teacher_score' not in data or 'teacher_feedback' not in data:
+            return jsonify({'error': 'Missing teacher_score or teacher_feedback'}), 400
+        
+        sub = Submission.query.get(submission_id)
+        if not sub:
+            return jsonify({'error': 'Submission not found'}), 404
+        
+        task = Task.query.get(sub.task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        teacher_score = data['teacher_score']
+        teacher_feedback = data['teacher_feedback']
+        
+        if not isinstance(teacher_score, int) or teacher_score < 0 or teacher_score > 100:
+            return jsonify({'error': 'teacher_score must be integer 0-100'}), 400
+        
+        sub.teacher_score = teacher_score
+        sub.teacher_feedback = teacher_feedback
+        sub.status = 'graded'
+        sub.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Submission graded successfully',
+            'submission': {
+                'id': sub.id,
+                'teacher_score': sub.teacher_score,
+                'status': sub.status
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error grading submission: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+

@@ -2,42 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockSubmissions, getTaskById, getQuestionById, mockUsers } from '@/lib/mockData';
-import { Submission } from '@/lib/types';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
+import { SubmissionWithDetails } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 import { Eye, CheckCircle, Clock } from 'lucide-react';
 
-interface SubmissionWithDetails extends Submission {
-  studentName?: string;
-  taskTitle?: string;
-  taskDifficulty?: string;
-}
-
 export default function TeacherSubmissionsPage() {
   const router = useRouter();
-  const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'submitted' | 'graded'>('all');
+  const [taskFilter, setTaskFilter] = useState(''); // New task title filter
 
   useEffect(() => {
-    // TODO: Fetch submissions from Flask API
-    // const response = await fetch('/api/teacher/submissions');
-    // const data = await response.json();
-    // setSubmissions(data);
-    
-    // Mock data with details
-    const allSubmissions: SubmissionWithDetails[] = mockSubmissions.map(sub => {
-      const task = getTaskById(sub.task_id);
-      const question = task ? getQuestionById(task.question_id) : undefined;
-      const student = mockUsers.find(u => u.id === sub.student_id);
-      
-      return {
-        ...sub,
-        studentName: student?.name || sub.student_id,
-        taskTitle: question?.question_text || '—',
-        taskDifficulty: question?.difficulty_level || '—',
-      };
-    });
-    setSubmissions(allSubmissions);
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const fetchSubmissions = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.TEACHER_SUBMISSIONS, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch submissions');
+        }
+        const data = await response.json();
+        setSubmissions(data.submissions || []);
+        console.log("data",data);
+      } catch (err) {
+        console.error('Error fetching submissions:', err);
+      }
+    };
+
+    fetchSubmissions();
   }, []);
 
   const filteredSubmissions = submissions.filter(sub => {
@@ -45,7 +44,9 @@ export default function TeacherSubmissionsPage() {
     if (filter === 'submitted') return sub.status === 1 && !sub.teacher_score;
     if (filter === 'graded') return sub.teacher_score !== undefined;
     return true;
-  });
+  }).filter(sub => 
+    taskFilter === '' || sub.task_title.toLowerCase().includes(taskFilter.toLowerCase())
+  );
 
   const handleRowClick = (submissionId: string) => {
     router.push(`/teacher/submissions/${submissionId}`);
@@ -55,7 +56,7 @@ export default function TeacherSubmissionsPage() {
     <section className="section-padding mt-5 container mx-auto px-4">
       <h2 className="text-4xl font-bold mb-8">Student Submissions</h2>
 
-      {/* Filter Tabs */}
+      {/* Status Filter Tabs */}
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setFilter('all')}
@@ -65,7 +66,7 @@ export default function TeacherSubmissionsPage() {
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          All ({submissions.length})
+          Tất cả ({submissions.length})
         </button>
         <button
           onClick={() => setFilter('submitted')}
@@ -76,7 +77,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          Pending ({submissions.filter(s => s.status === 1 && !s.teacher_score).length})
+          Chờ chấm ({submissions.filter(s => s.status === 1 && !s.teacher_score).length})
         </button>
         <button
           onClick={() => setFilter('graded')}
@@ -87,7 +88,30 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          Graded ({submissions.filter(s => s.teacher_score).length})
+          Đã chấm ({submissions.filter(s => s.teacher_score).length})
+        </button>
+      </div>
+
+      {/* Task Filter Dropdown */}
+      <div className="mb-6 flex gap-4 items-end">
+        <div className="flex-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo bài tập:</label>
+          <select
+            value={taskFilter}
+            onChange={(e) => setTaskFilter(e.target.value)}
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            <option value="">Tất cả bài tập</option>
+            {[...new Set(submissions.map(s => s.task_title))].map(title => (
+              <option key={title} value={title}>{title}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={() => {setTaskFilter(''); setFilter('all');}}
+          className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors whitespace-nowrap"
+        >
+          Xóa bộ lọc
         </button>
       </div>
 
@@ -113,16 +137,16 @@ export default function TeacherSubmissionsPage() {
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 font-semibold">
-                      {sub.studentName}
+                      {sub.student_name || sub.studentId}
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-semibold text-gray-900">{sub.taskTitle}</p>
-                        <p className="text-sm text-gray-500">{sub.taskDifficulty}</p>
+                        <p className="font-semibold text-gray-900">{sub.task_title}</p>
+                        <p className="text-sm text-gray-500">{sub.difficulty || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 text-sm">
-                      {formatDateTime(sub.submission_time || '')}
+                      {sub.submission_time ? new Date(sub.submission_time).toLocaleDateString('vi-VN') : '—'}
                     </td>
                     <td className="px-6 py-4">
                       {sub.ai_score ? (
@@ -140,11 +164,11 @@ export default function TeacherSubmissionsPage() {
                     </td>
                     <td className="px-6 py-4">
                       {sub.teacher_score ? (
-                        <span className="badge badge-success">Graded</span>
+                        <span className="badge badge-success bg-green-100 text-green-800">Graded</span>
                       ) : sub.status === 1 ? (
-                        <span className="badge badge-warning">Pending</span>
+                        <span className="badge badge-warning bg-yellow-100 text-yellow-800">Pending</span>
                       ) : (
-                        <span className="badge badge-secondary">Draft</span>
+                        <span className="badge badge-secondary bg-gray-100 text-gray-800">Draft</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">

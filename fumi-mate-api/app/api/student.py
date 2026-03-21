@@ -114,12 +114,13 @@ def get_submissions():
 
     submissions_data = []
     for sub in submissions:
+        task_obj = Task.query.get(sub.task_id) if sub.task_id else None
         submissions_data.append({
             'id': sub.id,
             'task': {
-                'id': sub.task.id,
-                'title': sub.task.title
-            } if sub.task else None,
+                'id': task_obj.id if task_obj else None,
+                'title': task_obj.title if task_obj else None
+            } if task_obj else None,
             'content': sub.content,
             'status': sub.status,
             'aiScore': sub.ai_score,
@@ -146,7 +147,7 @@ def get_submission_detail(submission_id):
         return jsonify({'error': 'Submission not found'}), 404
 
     # Ensure student owns this submission
-    if submission.student_id != user_id:
+    if submission.student_id != int(user_id):
         return jsonify({'error': 'Unauthorized. You can only view your own submissions.'}), 403
 
     # Parse AI feedback JSON
@@ -157,13 +158,14 @@ def get_submission_detail(submission_id):
         except:
             ai_feedback = {'feedback_text': submission.ai_feedback}
 
+    task_obj = Task.query.get(submission.task_id) if submission.task_id else None
     submission_data = {
         'id': submission.id,
         'task': {
-            'id': submission.task.id,
-            'title': submission.task.title,
-            'description': submission.task.description
-        } if submission.task else None,
+            'id': task_obj.id if task_obj else None,
+            'title': task_obj.title if task_obj else None,
+            'description': task_obj.description if task_obj else None
+        } if task_obj else None,
         'content': submission.content,
         'status': submission.status,
         'aiScore': submission.ai_score,

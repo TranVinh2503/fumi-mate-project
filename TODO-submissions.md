@@ -1,31 +1,34 @@
-# Teacher Submissions Real API Integration
-Status: Planning
+# TODO: Fix Student Submissions - Replace Mock with Real API
 
-## Phase 1: Backend APIs (teacher.py) ✅
-- [x] 1. GET /api/teacher/submissions (list teacher's submissions)
-- [x] 2. GET /api/teacher/submissions/<id> (detail)
-- [x] 3. POST /api/teacher/grade-submission/<id> (grade)
+## Plan Breakdown & Progress Tracking
 
-## Phase 2: Frontend Replace Mocks ✅
-- [x] 4. app/teacher/submissions/page.tsx → fetch TEACHER_SUBMISSIONS
-- [x] 5. app/teacher/submissions/[id]/page.tsx → fetch detail/grade POST
-- [x] 6. Update types.ts (SubmissionWithDetails)
+### 1. ✅ Update types.ts to ensure Submission compatibility
+   - Add `task_title?: string` and align status types with backend strings.
+   - File: `fumi-mate-nextjs/lib/types.ts`
 
-## Test
-- [ ] Restart backend
-- [ ] Teacher: /teacher/submissions list → detail → grade
-- [ ] Update task detail submissions count
+### 2. ✅ Update submissions list page.tsx - Real API integration complete with loading/error states, status mapping, backend field mapping (task.title, aiScore, updatedAt)
+   - Replace mock getSubmissionsByStudentId with real fetch to /api/student/submissions
+   - Use AuthContext for token
+   - Map status strings to UI badges
+   - Use task.title for display
+   - Add loading/error states
+   - File: `fumi-mate-nextjs/app/student/submissions/page.tsx`
 
-**Backend APIs ready. Frontend now uses real API calls instead of mocks. Ready for testing!**
+### 3. ✅ Update submissions detail [id]/page.tsx - Real API, loading/error/not found UI, field mapping
+   - Replace mock getSubmissionById with real fetch to /api/student/submissions/${id}
+   - Use task.title
+   - Keep feedback parsing
+   - Add loading/error
+   - File: `fumi-mate-nextjs/app/student/submissions/[id]/page.tsx`
 
-## Phase 2: Frontend Replace Mocks
-- [ ] 4. app/teacher/submissions/page.tsx → fetch TEACHER_SUBMISSIONS
-- [ ] 5. app/teacher/submissions/[id]/page.tsx → fetch detail/grade POST
-- [ ] 6. Update types.ts (SubmissionWithDetails)
+### 4. [PENDING] Test implementation
+   - Run backend: cd fumi-mate-api && python run.py
+   - Run frontend: cd fumi-mate-nextjs && npm run dev
+   - Login as student, check list/detail pages
+   - Verify API calls succeed with auth
 
-## Test
-- [ ] Restart backend
-- [ ] Teacher: /teacher/submissions list → detail → grade
-- [ ] Update task detail submissions count
+### 5. [PENDING] Optional: Cleanup mocks
+   - Remove/update mock functions for submissions after confirmation
 
-Notes: Use Submission model fields (student_id, content, ai_score, teacher_score, status='draft/submitted/...')
+**Status: Starting implementation...**
+

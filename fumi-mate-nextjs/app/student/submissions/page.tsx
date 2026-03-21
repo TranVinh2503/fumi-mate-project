@@ -2,34 +2,87 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockSubmissions, getSubmissionsByStudentId } from '@/lib/mockData';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { Submission } from '@/lib/types';
-import { formatDateTime, getStatusColor } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 export default function StudentSubmissionsPage() {
   const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: Lấy dữ liệu bài nộp từ Flask API
-    // const response = await fetch('/api/student/submissions');
-    // const data = await response.json();
-    // setSubmissions(data);
-    
-    // Dữ liệu giả định - giả sử ID học sinh hiện tại là student1
-    const studentSubmissions = getSubmissionsByStudentId("student1");
-    setSubmissions(studentSubmissions);
+    const fetchSubmissions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('Vui lòng đăng nhập lại');
+        }
+        const response = await fetch(API_ENDPOINTS.STUDENT_SUBMISSIONS, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        setSubmissions(data.submissions || []);
+      } catch (err: any) {
+        console.error('Fetch submissions error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmissions();
   }, []);
 
-  const handleRowClick = (submissionId: string) => {
-    router.push(`/student/submissions/${submissionId}`);
+  const handleRowClick = (submissionId: string | number) => {
+    router.push(`/student/submissions/${String(submissionId)}`);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const baseClass = 'px-2 py-1 rounded text-xs font-medium';
+    switch (status.toLowerCase()) {
+      case 'draft':
+        return <span className={`badge badge-secondary bg-gray-100 text-gray-800 ${baseClass}`}>Bản nháp</span>;
+      case 'submitted':
+        return <span className={`badge bg-yellow-100 text-yellow-800 ${baseClass}`}>Chờ chấm</span>;
+      case 'ai_graded':
+      case 'ai_done':
+        return <span className={`badge badge-success bg-green-100 text-green-800 ${baseClass}`}>AI đã chấm</span>;
+      case 'teacher_graded':
+      case 'done':
+        return <span className={`badge badge-info bg-blue-100 text-blue-800 ${baseClass}`}>GV đã chấm</span>;
+      default:
+        return <span className={`badge bg-gray-100 text-gray-800 ${baseClass}`}>{status || '—'}</span>;
+    }
   };
 
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
       <h2 className="text-4xl font-title font-bold mb-8">Bài làm của tôi</h2>
 
-      {submissions.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-xl text-gray-600 animate-pulse">Đang tải bài nộp của bạn...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-xl text-red-600 mb-4">Lỗi tải dữ liệu: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : submissions.length > 0 ? (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -51,31 +104,24 @@ export default function StudentSubmissionsPage() {
                   >
                     <td className="px-6 py-4 font-semibold">
                       {/* Hiển thị tiêu đề bài tập nếu có, nếu không để mặc định */}
-                      {sub.id ? `Bài viết #${sub.id.slice(-4)}` : '—'}
+                      {sub.task?.title || (sub.id ? `Bài viết #${String(sub.id).slice(-4)}` : '—')}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.status === 2 ? (
-                        <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded text-xs">AI đã chấm</span>
-                      ) : sub.status === 3 ? (
-                        <span className="badge badge-info bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">GV đã chấm</span>
-                      ) : (
-                        <span className="badge badge-secondary bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Bản nháp</span>
-                      )}
+                      {getStatusBadge(String(sub.status))}
                     </td>
-
                     <td className="px-6 py-4 text-gray-600">
-                      {sub.submission_time}
+                      {formatDateTime(sub.updatedAt ?? sub.createdAt ?? sub.updated_at ?? sub.created_at ?? '') || '—'}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.ai_score ? (
-                        <span className="font-semibold text-blue-600">{sub.ai_score}</span>
+                      {sub.aiScore || sub.ai_score ? (
+                        <span className="font-semibold text-blue-600">{sub.aiScore || sub.ai_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.teacher_score ? (
-                        <span className="font-semibold text-green-600">{sub.teacher_score}</span>
+                      {sub.teacherScore || sub.teacher_score ? (
+                        <span className="font-semibold text-green-600">{sub.teacherScore || sub.teacher_score}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}

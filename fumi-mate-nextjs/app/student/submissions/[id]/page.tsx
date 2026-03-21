@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getSubmissionById } from '@/lib/mockData';
+import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { Submission } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
 
@@ -30,16 +30,42 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
   
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Logic fetch dữ liệu bài nộp
-    const foundSubmission = getSubmissionById(submissionId);
-    setSubmission(foundSubmission || null);
-    
-    if (foundSubmission?.ai_feedback) {
-      const parsedFeedback = parseJSON<FeedbackData>(foundSubmission.ai_feedback, {});
-      setFeedback(parsedFeedback);
-    }
+    const fetchSubmission = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setError('Vui lòng đăng nhập lại');
+          return;
+        }
+        const response = await fetch(`${API_ENDPOINTS.STUDENT_SUBMISSIONS}/${submissionId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        setSubmission(data.submission);
+        if (data.submission?.ai_feedback || data.submission?.aiFeedback) {
+          const feedbackStr = typeof data.submission.ai_feedback === 'string' ? data.submission.ai_feedback : JSON.stringify(data.submission.aiFeedback || {});
+          setFeedback(parseJSON<FeedbackData>(feedbackStr, {}));
+        }
+      } catch (err: any) {
+        console.error('Fetch submission error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmission();
   }, [submissionId]);
 
   if (!submission) {

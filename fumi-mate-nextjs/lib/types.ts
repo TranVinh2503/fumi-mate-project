@@ -29,6 +29,7 @@ export interface Task {
   difficulty?: string;
   dueDate?: string;
   deadline?: string;
+  startDate?: string;
   createdAt?: string;
   isDone?: boolean;
   questionCount?: number;

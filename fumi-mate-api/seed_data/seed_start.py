@@ -108,6 +108,7 @@ def seed_tasks(teacher):
         title="自己紹介作文",
         description="日本語で200字以内の自己紹介を書いてください。",
         difficulty="easy",
+        start_date=datetime.utcnow() - timedelta(days=1),
         due_date=datetime.utcnow() + timedelta(days=7),
         created_by=teacher.id,
         created_at=datetime.utcnow(),
@@ -115,11 +116,12 @@ def seed_tasks(teacher):
         assigned_students=None  # Visible to all students
     )
 
-    # Task 2: Visible to all students
+    # Task 2: Start tomorrow
     task2 = Task(
         title="意見文：アルバイトについて",
         description="アルバイトのメリット・デメリットについて意見を書いてください。",
         difficulty="medium",
+        start_date=datetime.utcnow() + timedelta(days=1),
         due_date=datetime.utcnow() + timedelta(days=10),
         created_by=teacher.id,
         created_at=datetime.utcnow(),

@@ -1,0 +1,298 @@
+{
+  "students": [
+    {
+      "stt": 1,
+      "student_id": "2407060094",
+      "full_name": "Nguyễn Mai Linh",
+      "class": "4NB24"
+    },
+    {
+      "stt": 2,
+      "student_id": "2407060096",
+      "full_name": "Nguyễn Trà My",
+      "class": "4NB24"
+    },
+    {
+      "stt": 3,
+      "student_id": "2407060098",
+      "full_name": "Trần Thị Thủy Linh",
+      "class": "4NB24"
+    },
+    {
+      "stt": 4,
+      "student_id": "2407060105",
+      "full_name": "Nguyễn Phương Uyên",
+      "class": "4NB24"
+    },
+    {
+      "stt": 5,
+      "student_id": "2407060125",
+      "full_name": "Phan Gia Kỳ",
+      "class": "5NB24"
+    },
+    {
+      "stt": 6,
+      "student_id": "2407060134",
+      "full_name": "Nguyễn Lê Khánh Chi",
+      "class": "5NB24"
+    },
+    {
+      "stt": 7,
+      "student_id": "2407060142",
+      "full_name": "Phạm Diệu Ly",
+      "class": "5NB24"
+    },
+    {
+      "stt": 8,
+      "student_id": "2407060158",
+      "full_name": "Nguyễn Thị Minh Anh",
+      "class": "6NB24"
+    },
+    {
+      "stt": 9,
+      "student_id": "2407060159",
+      "full_name": "Đỗ Minh Ngọc",
+      "class": "6NB24"
+    },
+    {
+      "stt": 10,
+      "student_id": "2407060172",
+      "full_name": "Phạm Bích Diệp",
+      "class": "6NB24"
+    },
+    {
+      "stt": 11,
+      "student_id": "2407060039",
+      "full_name": "Nguyễn Quang Thành",
+      "class": "2NB24"
+    },
+    {
+      "stt": 12,
+      "student_id": "2407060145",
+      "full_name": "Đỗ Khải Hà",
+      "class": "5NB24"
+    },
+    {
+      "stt": 13,
+      "student_id": "2407060018",
+      "full_name": "Hoàng Trung Hải",
+      "class": "1NB24"
+    },
+    {
+      "stt": 14,
+      "student_id": "2407060167",
+      "full_name": "Nguyễn Thị Thuỳ Trang",
+      "class": "6NB24"
+    },
+    {
+      "stt": 15,
+      "student_id": "2407060156",
+      "full_name": "Đỗ Thùy Linh",
+      "class": "6NB24"
+    },
+    {
+      "stt": 16,
+      "student_id": "2407060169",
+      "full_name": "Bùi Diệu Thảo",
+      "class": "6NB24"
+    },
+    {
+      "stt": 17,
+      "student_id": "2507060052",
+      "full_name": "Lê Đặng Minh Giang",
+      "class": "5NB24"
+    },
+    {
+      "stt": 18,
+      "student_id": "2407060148",
+      "full_name": "Lê Duy Long",
+      "class": "5NB24"
+    },
+    {
+      "stt": 19,
+      "student_id": "2407060027",
+      "full_name": "Lê Khánh Huyền",
+      "class": "1NB24"
+    },
+    {
+      "stt": 20,
+      "student_id": "2407060122",
+      "full_name": "Lê Gia Linh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 21,
+      "student_id": "2507060173",
+      "full_name": "Nhâm Anh Thư",
+      "class": "1NB24"
+    },
+    {
+      "stt": 22,
+      "student_id": "2407060175",
+      "full_name": "Hoàng Thị Vân Thảo",
+      "class": "6NB24"
+    },
+    {
+      "stt": 23,
+      "student_id": "2407060054",
+      "full_name": "Phan Thanh Hiền",
+      "class": "2NB24"
+    },
+    {
+      "stt": 24,
+      "student_id": "2407060007",
+      "full_name": "Đoàn Thị Diệu Linh",
+      "class": "2NB24"
+    },
+    {
+      "stt": 25,
+      "student_id": "2407060003",
+      "full_name": "Lê Thị Anh Thư",
+      "class": "1NB24"
+    },
+    {
+      "stt": 26,
+      "student_id": "2407060146",
+      "full_name": "Lê Chiêu Anh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 27,
+      "student_id": "2407060164",
+      "full_name": "Trần Việt Bách",
+      "class": "6NB24"
+    },
+    {
+      "stt": 28,
+      "student_id": "2407060143",
+      "full_name": "Nguyễn Thiều Minh Lâm",
+      "class": "5NB24"
+    },
+    {
+      "stt": 29,
+      "student_id": "2407060180",
+      "full_name": "Tô Thị Thu Huyền",
+      "class": "6NB24"
+    },
+    {
+      "stt": 30,
+      "student_id": "2507060041",
+      "full_name": "Ngô Thế Đạt",
+      "class": "3NB24"
+    },
+    {
+      "stt": 31,
+      "student_id": "2407060139",
+      "full_name": "Lê Duy Anh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 32,
+      "student_id": "2407060078",
+      "full_name": "Nguyễn Thị Minh Nguyệt",
+      "class": "3NB24"
+    },
+    {
+      "stt": 33,
+      "student_id": "2407060144",
+      "full_name": "Nguyễn Thị Ngọc Linh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 34,
+      "student_id": "2407060149",
+      "full_name": "Nguyễn Minh Trang",
+      "class": "5NB24"
+    },
+    {
+      "stt": 35,
+      "student_id": "2407060136",
+      "full_name": "Nguyễn Thị Ngọc Mai",
+      "class": "5NB24"
+    },
+    {
+      "stt": 36,
+      "student_id": "2507060060",
+      "full_name": "Nguyễn Hồng Hải",
+      "class": "2NB24"
+    },
+    {
+      "stt": 37,
+      "student_id": "2507060111",
+      "full_name": "Nguyễn Ngọc Minh",
+      "class": "3NB24"
+    },
+    {
+      "stt": 38,
+      "student_id": "2407060082",
+      "full_name": "Đặng Hoàng Lan",
+      "class": "3NB24"
+    },
+    {
+      "stt": 39,
+      "student_id": "2407060048",
+      "full_name": "Đặng Hà Vy",
+      "class": "2NB24"
+    },
+    {
+      "stt": 40,
+      "student_id": "2407060037",
+      "full_name": "Nguyễn Thị Diễm",
+      "class": "2NB24"
+    },
+    {
+      "stt": 41,
+      "student_id": "2407060005",
+      "full_name": "Nguyễn Thanh Thúy",
+      "class": "2NB24"
+    },
+    {
+      "stt": 42,
+      "student_id": "2407060060",
+      "full_name": "Hoàng Thị Nhi",
+      "class": "2NB24"
+    },
+    {
+      "stt": 43,
+      "student_id": "2407060168",
+      "full_name": "Ngô Thị Hằng",
+      "class": "6NB24"
+    },
+    {
+      "stt": 44,
+      "student_id": "2407060032",
+      "full_name": "Nguyễn Khánh Chi",
+      "class": "2NB24"
+    },
+    {
+      "stt": 45,
+      "student_id": "2407060030",
+      "full_name": "Đỗ Thị Lý",
+      "class": "1NB24"
+    },
+    {
+      "stt": 46,
+      "student_id": "2407060153",
+      "full_name": "Kiều Phương Linh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 47,
+      "student_id": "2407060147",
+      "full_name": "Nguyễn Mai Phương Linh",
+      "class": "5NB24"
+    },
+    {
+      "stt": 48,
+      "student_id": "2407060017",
+      "full_name": "Phan Hồng Ngọc",
+      "class": "1NB24"
+    },
+    {
+      "stt": 49,
+      "student_id": "2407060001",
+      "full_name": "Mai Ngọc Quỳnh Anh",
+      "class": "1NB24"
+    }
+  ]
+}

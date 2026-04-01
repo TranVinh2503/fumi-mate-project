@@ -26,7 +26,13 @@ def get_tasks():
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    tasks = Task.query.all()
+    now = datetime.utcnow()
+    tasks = Task.query.filter(
+        db.or_(
+            Task.start_date <= now,
+            Task.start_date.is_(None)
+        )
+    ).all()
     tasks_data = []
 
     for task in tasks:

@@ -30,6 +30,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
   
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData>({});
+  const [teacherFeedbackVisible, setTeacherFeedbackVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +116,7 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
             <div className="p-4 bg-green-50 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">Điểm giáo viên chấm</p>
               <p className="text-3xl font-bold text-green-600">
-                {submission.teacher_score || '—'}
+                {submission.teacherScore || '—'}
               </p>
             </div>
           </div>
@@ -129,10 +130,10 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           )}
 
           {/* Nhận xét từ giáo viên */}
-          {submission.teacher_feedback && (
+{submission.teacherFeedback && (
             <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
               <h6 className="font-semibold text-lg mb-2">👨‍🏫 Nhận xét từ giáo viên</h6>
-              <p className="text-gray-700 leading-relaxed">{submission.teacher_feedback}</p>
+              <p className="text-gray-700 leading-relaxed">{submission.teacherFeedback}</p>
             </div>
           )}
         </div>

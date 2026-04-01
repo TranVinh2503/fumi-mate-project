@@ -351,38 +351,45 @@ def get_submission_detail(submission_id):
         print(f"Error fetching submission detail: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@teacher_bp.route('/grade-submission/<int:submission_id>', methods=['POST'])
+@teacher_bp.route('/submissions/<int:submission_id>/grade', methods=['PATCH'])
 @jwt_required()
 @role_required('teacher')
 def grade_submission(submission_id):
     """
     Grade a submission
-    Body: {"teacher_score": int, "teacher_feedback": str}
+    Body: {"teacher_score": int 0-100, "teacher_feedback": str}
     """
     try:
         user_id = get_current_user_id()
         data = request.get_json()
         
-        if not data or 'teacher_score' not in data or 'teacher_feedback' not in data:
-            return jsonify({'error': 'Missing teacher_score or teacher_feedback'}), 400
+        # 1. Kiểm tra an toàn cả 2 trường dữ liệu
+        if not data or 'teacher_score' not in data:
+            return jsonify({'error': 'Missing teacher_score'}), 400
+            
+        teacher_feedback = data.get('teacher_feedback', '')
+        if not teacher_feedback:
+             return jsonify({'error': 'Missing teacher_feedback'}), 400
         
         sub = Submission.query.get(submission_id)
         if not sub:
             return jsonify({'error': 'Submission not found'}), 404
         
         task = Task.query.get(sub.task_id)
-        if not task:
-            return jsonify({'error': 'Task not found'}), 404
+        
+        # 2. LƯU Ý: Đảm bảo user_id hiện tại thực sự là người tạo task. 
+        # Nếu mô hình của bạn cho phép giáo viên khác chấm, hãy bỏ điều kiện created_by đi.
+        if not task or task.created_by != int(user_id):
+            return jsonify({'error': 'Not authorized for this task. You are not the creator.'}), 403
         
         teacher_score = data['teacher_score']
-        teacher_feedback = data['teacher_feedback']
         
-        if not isinstance(teacher_score, int) or teacher_score < 0 or teacher_score > 100:
-            return jsonify({'error': 'teacher_score must be integer 0-100'}), 400
+        if not isinstance(teacher_score, (int, float)) or teacher_score < 0 or teacher_score > 100:
+            return jsonify({'error': 'teacher_score must be number 0-100'}), 400
         
-        sub.teacher_score = teacher_score
+        sub.teacher_score = float(teacher_score)
         sub.teacher_feedback = teacher_feedback
-        sub.status = 'graded'
+        sub.status = 'teacher_graded'
         sub.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -393,12 +400,14 @@ def grade_submission(submission_id):
             'submission': {
                 'id': sub.id,
                 'teacher_score': sub.teacher_score,
+                'teacher_feedback': sub.teacher_feedback,
                 'status': sub.status
             }
         }), 200
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error grading submission: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
+        # In thêm traceback để dễ debug trên server
+        import traceback
+        print(f"Error grading: {traceback.format_exc()}")
+        return jsonify({'error': 'Server error, check backend logs'}), 500

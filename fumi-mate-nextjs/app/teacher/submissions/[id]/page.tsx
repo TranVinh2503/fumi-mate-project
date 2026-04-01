@@ -53,8 +53,8 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
         }
         const data = await response.json();
         setSubmission(data.submission);
-        setTeacherScore(data.submission.teacher_score?.toString() || '');
-        setTeacherFeedback(data.submission.teacher_feedback || '');
+        setTeacherScore(((data.submission.teacherScore ?? data.submission.teacher_score)?.toString()) || '');
+        setTeacherFeedback((data.submission.teacherFeedback ?? data.submission.teacher_feedback) || '');  
         
         if (data.submission.ai_feedback) {
           const parsed = parseJSON<FeedbackData>(data.submission.ai_feedback, {});
@@ -77,25 +77,40 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
       return;
     }
     
+    // Đảm bảo teacherFeedback không rỗng (dù đã có required ở HTML)
+    if (!teacherFeedback.trim()) {
+      setMessage('Please provide feedback');
+      return;
+    }
+    
     const token = localStorage.getItem('access_token');
     try {
-      const response = await fetch(`/api/teacher/grade-submission/${submissionId}`, {
-        method: 'POST',
+      const response = await fetch(API_ENDPOINTS.TEACHER_GRADE_SUBMISSION(parseInt(submissionId)), {
+        method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ teacher_score: score, teacher_feedback }),
+        body: JSON.stringify({ 
+          teacher_score: score, 
+          teacher_feedback: teacherFeedback.trim() 
+        }),
       });
+
+      const data = await response.json(); // Đọc response trước
+
       if (!response.ok) {
-        throw new Error('Failed to grade submission');
+        // Ném lỗi chi tiết từ backend trả về (nếu có)
+        throw new Error(data.error || 'Failed to grade submission');
       }
+
       setMessage('✅ Grade submitted successfully!');
       setTimeout(() => {
         router.push('/teacher/submissions');
       }, 1500);
-    } catch (err) {
-      setMessage('❌ Error submitting grade');
+    } catch (err: any) {
+      // Hiển thị lỗi chi tiết ra UI để dễ debug hơn
+      setMessage(`❌ Error: ${err.message}`);
       console.error('Grade submission error:', err);
     }
   };

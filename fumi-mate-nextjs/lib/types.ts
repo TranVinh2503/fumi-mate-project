@@ -32,6 +32,7 @@ export interface Task {
   startDate?: string;
   createdAt?: string;
   isDone?: boolean;
+  attemptCount?: number;
   questionCount?: number;
   questions?: Array<{
     id: number;
@@ -75,9 +76,12 @@ export interface Submission {
   aiScore?: number;
   ai_score?: number;
   ai_feedback?: string | object;
+  aiFeedback?: object;
   teacherScore?: number;
   teacher_score?: number;
   teacher_feedback?: string;
+  teacherFeedback?: string;
+  attemptCount?: number;
   status: SubmissionStatus;
   submission_time?: string;
   createdAt?: string;

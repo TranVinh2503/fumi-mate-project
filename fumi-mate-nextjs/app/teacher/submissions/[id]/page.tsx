@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
@@ -36,37 +36,39 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   const [teacherFeedback, setTeacherFeedback] = useState('');
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
+// 1. Đưa fetchSubmission ra ngoài và bọc bằng useCallback
+const fetchSubmission = useCallback(async () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
 
-    const fetchSubmission = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.TEACHER_SUBMISSIONS + `/${submissionId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch submission');
-        }
-        const data = await response.json();
-        setSubmission(data.submission);
-        setTeacherScore(((data.submission.teacherScore ?? data.submission.teacher_score)?.toString()) || '');
-        setTeacherFeedback((data.submission.teacherFeedback ?? data.submission.teacher_feedback) || '');  
-        
-        if (data.submission.ai_feedback) {
-          const parsed = parseJSON<FeedbackData>(data.submission.ai_feedback, {});
-          setAiFeedback(parsed);
-        }
-      } catch (err) {
-        console.error('Error fetching submission:', err);
+  try {
+    const response = await fetch(API_ENDPOINTS.TEACHER_SUBMISSIONS + `/${submissionId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    };
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch submission');
+    }
+    const data = await response.json();
+    setSubmission(data.submission);
+    setTeacherScore(((data.submission.teacherScore ?? data.submission.teacher_score)?.toString()) || '');
+    setTeacherFeedback((data.submission.teacherFeedback ?? data.submission.teacher_feedback) || '');  
+    
+    if (data.submission.ai_feedback) {
+      const parsed = parseJSON<FeedbackData>(data.submission.ai_feedback, {});
+      setAiFeedback(parsed);
+    }
+  } catch (err) {
+    console.error('Error fetching submission:', err);
+  }
+}, [submissionId]);
 
+  // 2. Chỉ việc gọi hàm đó trong useEffect
+  useEffect(() => {
     fetchSubmission();
-  }, [submissionId]);
+  }, [fetchSubmission]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +107,8 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
       }
 
       setMessage('✅ Grade submitted successfully!');
+      // Refetch to show updated data
+      fetchSubmission();
       setTimeout(() => {
         router.push('/teacher/submissions');
       }, 1500);
@@ -231,18 +235,28 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
               Be specific and constructive. Highlight both strengths and areas for improvement.
             </p>
           </div>
-
-          <div className="flex gap-4">
-            <button type="submit"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors">
-              Submit Grade
+          {submission.status !== 'teacher_graded' ? (
+              <div className="flex gap-4">
+              <button type="submit"
+                className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors">
+                Submit Grade
+              </button>
+              <Link
+                href="/teacher/submissions"
+                className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center" >
+                Cancel
+              </Link>
+            </div>
+          ) : (
+            <div className="flex gap-4">
+            <button type="button"
+              disabled
+              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold inline-flex items-center">
+              Đã chấm điểm
             </button>
-            <Link
-              href="/teacher/submissions"
-              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center" >
-              Cancel
-            </Link>
           </div>
+          )}
+          
         </form>
 
         {/* AI Detailed Analysis (Collapsible) */}

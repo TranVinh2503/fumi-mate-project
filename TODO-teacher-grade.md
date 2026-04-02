@@ -11,4 +11,4 @@
 
 ### 3. ✅ Update student detail show teacher_score/feedback
 
-**Status:** Starting
+**Status:** ✅ COMPLETE (refetch + isDone fixed)

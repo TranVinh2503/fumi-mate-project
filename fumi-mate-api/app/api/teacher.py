@@ -285,7 +285,8 @@ def get_teacher_submissions():
                 'content': sub.content[:100] + '...' if sub.content and len(sub.content) > 100 else sub.content,
                 'ai_score': sub.ai_score,
                 'teacher_score': sub.teacher_score,
-                'status': sub.status,
+'status': sub.status,
+                'attemptCount': sub.attempt_count,
                 'submission_time': sub.created_at.isoformat() if sub.created_at else None,
             })
         

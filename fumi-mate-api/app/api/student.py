@@ -50,7 +50,8 @@ def get_tasks():
             "description": task.description,
             "difficulty": task.difficulty,
             "dueDate": task.due_date.isoformat() if task.due_date else None,
-            "isDone": submission is not None and submission.status == "submitted",
+"isDone": submission is not None and submission.status != "draft",
+            "attemptCount": submission.attempt_count if submission else 1,
             "questions": [
                 {
                     "id": q.id,
@@ -129,8 +130,9 @@ def get_submissions():
             } if task_obj else None,
             'content': sub.content,
             'status': sub.status,
-            'aiScore': sub.ai_score,
+'aiScore': sub.ai_score,
             'teacherScore': sub.teacher_score,
+            'attemptCount': sub.attempt_count,
             'aiFeedback': sub.ai_feedback,
             'teacherFeedback': sub.teacher_feedback,
             'createdAt': sub.created_at.isoformat() if sub.created_at else None,
@@ -201,10 +203,13 @@ def submit_test(task_id):
     action = data.get('action', 'submit')  # 'save' or 'submit'
 
     # Check if submission already exists
-    submission = Submission.query.filter_by(task_id=task_id, student_id=user_id).first()
+    submission = Submission.query.filter_by(task_id=task_id, student_id=user_id).order_by(Submission.id.desc()).first()
+
+    if submission and submission.status == 'teacher_graded' and submission.attempt_count >= 2:
+        return jsonify({'error': 'Maximum 2 attempts reached'}), 409
 
     if submission and submission.status == 'submitted':
-        return jsonify({'error': 'You have already submitted this test'}), 409
+        return jsonify({'error': 'Already submitted, waiting for grading'}), 409
 
     if not submission:
         submission = Submission(
@@ -219,6 +224,8 @@ def submit_test(task_id):
 
     # Handle save vs submit
     if action == 'submit':
+        if submission and submission.status == 'teacher_graded' and submission.attempt_count < 2:
+            submission.attempt_count += 1
         submission.status = 'submitted'
 
         # Generate AI feedback

@@ -14,6 +14,7 @@ class Submission(db.Model):
     teacher_score = db.Column(db.Float)
     status = db.Column(db.String(20), default='draft') #done
     version = db.Column(db.Integer, default=1)  # For versioning
+    attempt_count = db.Column(db.Integer, default=1)  # Track resubmission attempts max 2
     parent_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)  # For re-submissions
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

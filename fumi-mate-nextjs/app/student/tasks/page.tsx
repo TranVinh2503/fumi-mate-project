@@ -90,86 +90,89 @@ export default function StudentTasksPage() {
 
       {tasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-      {tasks.map((task: Task) => {
-        // 1. Xác định các trạng thái logic
-        // Gán giá trị mặc định là 0 nếu attemptCount không tồn tại
-        const currentAttempt = task.attemptCount ?? 0;
-        const canResubmit = task.isDone && task.attemptCount === 1;
-        const isFinalDone = task.isDone && (currentAttempt >= 2 || currentAttempt === 0); 
-        // Lưu ý: currentAttempt === 0 ở đây để xử lý các bài cũ chưa có logic đếm lượt
-        const statusText = task.isDone ? 'Đã hoàn thành' : 'Chưa bắt đầu';
+          {tasks.map((task) => {
+            const currentAttempt = task.attemptCount ?? 0;
+            const canResubmit = task.isDone && task.attemptCount === 1;
+            const isFinalDone = task.isDone && (currentAttempt >= 2 || currentAttempt === 0); 
+            const statusText = task.isDone ? 'Đã hoàn thành' : 'Chưa bắt đầu';
+            const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
 
-        return (
-          <div key={task.id}>
-            {/* TRƯỜNG HỢP 1: ĐÃ XONG HOÀN TOÀN (Lần 2 hoặc không cho nộp nữa) */}
-            {isFinalDone ? (
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg shadow-sm p-6 opacity-80">
-                <h5 className="text-xl font-bold mb-2">{task.title || 'Bài tập'}</h5>
-                <p className="text-gray-600 text-sm mb-3 font-medium text-green-600">
-                  Trạng thái: Hoàn thành {task.attemptCount}/2 ✅
-                </p>
-                <div className="mb-2 text-sm">
-                  <span className="font-semibold">Hạn chót: </span>
-                  <span>{task.dueDate ? formatDate(task.dueDate) : 'Không có'}</span>
-                </div>
-                {/* Dòng hướng dẫn nhanh */}
-                <div className="mt-auto pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 italic mb-2 text-center">
-                    Để xem chi tiết điểm và nhận xét của giáo viên:
-                  </p>
-                  <Link 
-                    href="/student/submissions" 
-                    className="block w-full text-center bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors border border-blue-200"
-                  >
-                    Vào danh sách bài đã nộp ➔
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              /* TRƯỜNG HỢP 2: CHƯA XONG HOẶC ĐƯỢC PHÉP NỘP LẠI LẦN 2 */
-              <div className="bg-white border-2 border-gray-800 rounded-lg shadow-md p-6 card-hover flex flex-col h-full">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="text-xl font-bold">{task.title || 'Bài tập'}</h5>
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                    {task.difficulty || 'Dễ'}
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-3">
-                  Trạng thái: <span className={task.isDone ? "text-green-600" : "text-orange-500 font-bold"}>
-                    {canResubmit ? "Đã chấm (Lần 1) - Có thể nộp lại" : statusText}
-                  </span>
-                </p>
-
-                <div className="mb-4 flex-grow text-sm">
-                  <div className="mb-1">
-                    <span className="font-semibold">Hạn chót: </span>
-                    <span>{task.dueDate ? formatDate(task.dueDate) : 'Không có'}</span>
+            return (
+              <div key={task.id}>
+                {isFinalDone ? (
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-lg shadow-sm p-6 opacity-80">
+                    <h5 className="text-xl font-bold mb-2">{task.title || 'Bài tập'}</h5>
+                    <p className="text-gray-600 text-sm mb-3 font-medium text-green-600">
+                      Trạng thái: Hoàn thành {task.attemptCount}/2 ✅
+                    </p>
+                    <div className="mb-2 text-sm">
+                      <span className="font-semibold">Hạn chót: </span>
+                      <span className={isOverdue ? 'text-red-600 font-bold' : ''}>
+                        {task.dueDate ? formatDate(task.dueDate) : 'Không có'}
+                      </span>
+                    </div>
+                    {isOverdue && (
+                      <p className="text-sm text-red-600 mt-1 font-semibold">
+                        ⏰ ĐÃ QUÁ HẠN
+                      </p>
+                    )}
+                    <div className="mt-auto pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 italic mb-2 text-center">
+                        Để xem chi tiết điểm và nhận xét của giáo viên:
+                      </p>
+                      <Link 
+                        href="/student/submissions" 
+                        className="block w-full text-center bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors border border-blue-200"
+                      >
+                        Vào danh sách bài đã nộp ➔
+                      </Link>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-semibold">Lượt nộp: </span>
-                    <span>{task.attemptCount || 0} / 2</span>
-                  </div>
-                </div>
+                ) : (
+                  <div className="bg-white border-2 border-gray-800 rounded-lg shadow-md p-6 card-hover flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-2">
+                      <h5 className="text-xl font-bold">{task.title || 'Bài tập'}</h5>
+                      <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                        {task.difficulty || 'Dễ'}
+                      </span>
+                    </div>
+                    
+                    <p className="text-gray-600 text-sm mb-3">
+                      Trạng thái: <span className={task.isDone ? "text-green-600" : "text-orange-500 font-bold"}>
+                        {canResubmit ? "Đã chấm (Lần 1) - Có thể nộp lại" : statusText}
+                      </span>
+                    </p>
 
-                <Link
-                  href={`/student/writing-test/${task.id}`}
-                  className={`block w-full text-center px-4 py-2 rounded-lg font-semibold transition-colors ${
-                    canResubmit 
-                    ? "bg-orange-500 hover:bg-orange-600 text-white" // Nút nộp lại nổi bật
-                    : "bg-secondary text-white hover:bg-primary"
-                  }`}
-                >
-                  {canResubmit ? 'Nộp lại bài (Lần 2)' : (task.isDone ? 'Làm lại' : 'Bắt đầu làm bài')}
-                </Link>
+                    <div className="mb-4 flex-grow text-sm">
+                      <div className="mb-1">
+                        <span className="font-semibold">Hạn chót: </span>
+                        <span className={isOverdue ? 'text-red-600 font-bold' : ''}>
+                          {task.dueDate ? formatDate(task.dueDate) : 'Không có'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-semibold">Lượt nộp: </span>
+                        <span>{task.attemptCount || 0} / 2</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/student/writing-test/${task.id}`}
+                      className={`block w-full text-center px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        isOverdue || canResubmit 
+                          ? "bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-400" 
+                          : "bg-secondary text-white hover:bg-primary"
+                      }`}
+                    >
+                      {isOverdue ? '🚨 Nộp muộn OK' : canResubmit ? 'Nộp lại bài (Lần 2)' : (task.isDone ? 'Làm lại' : 'Bắt đầu làm bài')}
+                    </Link>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
         </div>
       ) : (
-        /* Khi không có bài tập */
         <div className="text-center mt-12">
           <img
             src="/images/crying_girl.png"
@@ -180,6 +183,6 @@ export default function StudentTasksPage() {
           <p className="text-gray-500 text-lg">Hiện tại bạn chưa có bài tập nào được giao.</p>
         </div>
       )}      
-    </section>  
+    </section>
   );
 }

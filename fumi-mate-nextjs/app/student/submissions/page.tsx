@@ -102,9 +102,14 @@ export default function StudentSubmissionsPage() {
                     onClick={() => handleRowClick(sub.id)}
                     className="clickable-row border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 font-semibold">
+                    <td className="px-6 py-4 font-semibold flex flex-wrap gap-2 items-center">
                       {/* Hiển thị tiêu đề bài tập nếu có, nếu không để mặc định */}
-                      {sub.task?.title || (sub.id ? `Bài viết #${String(sub.id).slice(-4)}` : '—')}
+                      <span>{sub.task?.title || (sub.id ? `Bài viết #${String(sub.id).slice(-4)}` : '—')}</span>
+                      {sub.lateMinutes && sub.lateMinutes > 0 && (
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-medium">
+                          Nộp muộn {Math.round(sub.lateMinutes)} phút
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {getStatusBadge(String(sub.status))}

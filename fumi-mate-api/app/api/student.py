@@ -134,7 +134,8 @@ def get_submissions():
             'teacherScore': sub.teacher_score,
             'attemptCount': sub.attempt_count,
             'aiFeedback': sub.ai_feedback,
-            'teacherFeedback': sub.teacher_feedback,
+'teacherFeedback': sub.teacher_feedback,
+            'lateMinutes': sub.late_minutes,
             'createdAt': sub.created_at.isoformat() if sub.created_at else None,
             'updatedAt': sub.updated_at.isoformat() if sub.updated_at else None
         })
@@ -239,6 +240,13 @@ def submit_test(task_id):
             submission.ai_feedback = json.dumps({'feedback_text': 'AI feedback generation failed', 'overall_score': 0})
 
     submission.updated_at = datetime.utcnow()
+    if action == 'submit':
+        task = Task.query.get(task_id)
+        if task and task.due_date and datetime.utcnow() > task.due_date:
+            delta = datetime.utcnow() - task.due_date
+            submission.late_minutes = max(0, delta.total_seconds() / 60.0)
+        else:
+            submission.late_minutes = 0.0
     db.session.commit()
 
     message = 'Draft saved successfully' if action == 'save' else 'Test submitted successfully'

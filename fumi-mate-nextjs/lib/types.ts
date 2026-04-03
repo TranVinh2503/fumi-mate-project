@@ -82,12 +82,14 @@ export interface Submission {
   teacher_feedback?: string;
   teacherFeedback?: string;
   attemptCount?: number;
+  lateMinutes?: number;
   status: SubmissionStatus;
   submission_time?: string;
   createdAt?: string;
   updatedAt?: string;
   created_at?: string;
   updated_at?: string;
+
 }
 
 export interface SubmissionWithDetails extends Submission {

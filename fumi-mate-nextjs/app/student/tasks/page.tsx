@@ -92,8 +92,9 @@ export default function StudentTasksPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
           {tasks.map((task) => {
             const currentAttempt = task.attemptCount ?? 0;
-            const canResubmit = task.isDone && task.attemptCount === 1;
-            const isFinalDone = task.isDone && (currentAttempt >= 2 || currentAttempt === 0); 
+            // Temporarily disabled resubmit
+            const canResubmit = false;
+            const isFinalDone = task.isDone;
             const statusText = task.isDone ? 'Đã hoàn thành' : 'Chưa bắt đầu';
             const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
 
@@ -102,8 +103,11 @@ export default function StudentTasksPage() {
                 {isFinalDone ? (
                   <div className="bg-gray-50 border-2 border-gray-200 rounded-lg shadow-sm p-6 opacity-80">
                     <h5 className="text-xl font-bold mb-2">{task.title || 'Bài tập'}</h5>
-                    <p className="text-gray-600 text-sm mb-3 font-medium text-green-600">
+                    {/* <p className="text-gray-600 text-sm mb-3 font-medium text-green-600">
                       Trạng thái: Hoàn thành {task.attemptCount}/2 ✅
+                    </p> */}
+                    <p className="text-gray-600 text-sm mb-3 font-medium text-green-600">
+                      Trạng thái: Hoàn thành ✅
                     </p>
                     <div className="mb-2 text-sm">
                       <span className="font-semibold">Hạn chót: </span>

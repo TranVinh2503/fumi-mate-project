@@ -3,34 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
-import { Submission } from '@/lib/types';
+import { Submission, FeedbackData } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
-
-// Cập nhật Interface để khớp với dữ liệu thực tế từ JSON
-interface FeedbackData {
-  grade?: string;
-  feedback_text?: string;
-  action_plan?: string[];
-  practice_exercises?: Array<{
-    title: string;
-    description: string;
-    example?: string;
-  }>;
-  detailed_analysis?: {
-    grammar?: { score: number; issues?: string[]; suggestions?: string[] };
-    vocabulary?: { score: number; strengths?: string[]; improvements?: string[] };
-    structure?: { score: number; comments?: string };
-    fluency?: { score: number; feedback?: string };
-    content?: { score: number; feedback?: string };
-  };
-  overall_score?: number;
-}
 
 export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
   const submissionId = params.id;
   
   const [submission, setSubmission] = useState<any | null>(null);
-  const [feedback, setFeedback] = useState<FeedbackData>({});
+  const [feedback, setFeedback] = useState<FeedbackData>({});  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,41 +32,65 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
         const sub = data.submission;
         setSubmission(sub);
 
-        // LOGIC CHIA NHÓM
-        if (sub.experimental_group === 'variant') {
-          // Nếu backend gửi string thì parse, nếu gửi object thì dùng luôn
-          const rawFeedback = sub.ai_feedback || sub.aiFeedback;
-          const parsed = typeof rawFeedback === 'string' 
-            ? parseJSON<FeedbackData>(rawFeedback, {}) 
-            : rawFeedback;
-          setFeedback(parsed || {});
-        } else {
-          // Nhóm Control: Giả lập cấu hình feedback từ dữ liệu giáo viên
-          setFeedback({
-            feedback_text: sub.teacher_feedback || sub.teacherFeedback,
-            overall_score: sub.teacher_score || sub.teacherScore
+        // Auto AI grade for variant if no AI score
+        if (sub.experimental_group === 'variant' && (!sub.ai_score && !sub.aiScore)) {
+          await triggerAIGrading(submissionId, token!);
+          // Refetch after grading
+          const regradeRes = await fetch(`${API_ENDPOINTS.STUDENT_SUBMISSIONS}/${submissionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
           });
+          const regradeData = await regradeRes.json();
+          sub.ai_feedback = regradeData.submission.ai_feedback;
+          sub.ai_score = regradeData.submission.ai_score;
         }
+
+        // Parse feedback for display
+        const rawFeedback = sub.ai_feedback || sub.aiFeedback;
+        const parsed = typeof rawFeedback === 'string' 
+          ? parseJSON<FeedbackData>(rawFeedback, {}) 
+          : rawFeedback;
+        setFeedback(parsed || {});
       } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
+
+    const triggerAIGrading = async (id: string, token: string) => {
+      try {
+        const res = await fetch(`${API_ENDPOINTS.STUDENT_SUBMISSIONS}/${id}/grade`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!res.ok) console.error('AI grading failed:', await res.text());
+      } catch (e) {
+        console.error('Trigger AI grade error:', e);
+      }
+    };
+
     fetchSubmission();
   }, [submissionId]);
 
-  if (loading) return <div className="container mx-auto p-20 text-center text-gray-500">Đang tải kết quả...</div>;
+  if (loading) return <div className="container mx-auto p-20 text-center text-gray-500">Đang tải...</div>;
   if (error) return <div className="container mx-auto p-20 text-center text-red-500">{error}</div>;
   if (!submission) return null;
 
   const isVariant = submission.experimental_group === 'variant';
-  const displayScore = isVariant ? (submission.ai_score || submission.aiScore) : (submission.teacher_score || submission.teacherScore);
-  console.log(submission)
-  console.log(submission.experimental_group)
+  const displayScore = submission.ai_score || submission.aiScore || submission.teacher_score || submission.teacherScore;
+  
+        console.log('Submission:', submission);
+        console.log('Feedback:', feedback);
+        if (feedback.grading_method) {
+          console.log(`[FRONTEND] Grading method: ${feedback.grading_method}`);
+        }
+
   return (
     <section className="section-padding mt-5 container mx-auto px-4 pb-20">
-      <div className="max-w-4xl mx-auto"> {/* Thu hẹp chiều rộng tối đa để tập trung nội dung */}
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-end mb-10 border-b pb-4">
           <div>
             <p className="text-sm text-blue-600 font-bold uppercase tracking-widest mb-1">Kết quả học tập</p>
@@ -97,111 +101,136 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
           </Link>
         </div>
 
-        {/* 1. Nội dung bài làm - Nhỏ gọn hơn */}
+        {/* Content */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
           <div className="flex items-center gap-2 mb-4 text-gray-500">
             <span className="text-lg">📄</span>
-            <span className="text-sm font-semibold uppercase">Bài làm của bạn</span>
+            <span className="text-sm font-semibold uppercase">Bài làm</span>
           </div>
           <p className="whitespace-pre-wrap text-gray-600 leading-relaxed bg-gray-50/50 p-5 rounded-lg border border-dashed">
             {submission.content}
           </p>
         </div>
 
-        {/* 2. Điểm số & Nhận xét - Style mới: Nhỏ gọn & Tinh tế */}
+        {/* Score & Feedback */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
           <div className="flex flex-col md:flex-row">
-            {/* Box điểm nhỏ gọn bên trái */}
             <div className="bg-slate-50 md:w-48 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
-              <div className="relative flex items-center justify-center">
-                {/* Vòng tròn điểm số nhỏ */}
-                <div className="w-24 h-24 rounded-full border-4 border-white shadow-sm flex flex-col items-center justify-center bg-white">
-                  <span className="text-3xl font-black text-slate-800">{displayScore ?? '—'}</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase">Điểm số</span>
-                </div>
+              <div className="w-24 h-24 rounded-full border-4 border-white shadow-sm flex flex-col items-center justify-center bg-white">
+                <span className="text-3xl font-black text-slate-800">{displayScore ?? '—'}</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase">/100</span>
               </div>
               {feedback.grade && (
                 <div className="mt-4 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-tighter">
-                  Xếp loại {feedback.grade}
+                  {feedback.grade}
                 </div>
               )}
             </div>
-            
-            {/* Nội dung nhận xét bên phải */}
             <div className="flex-1 p-8">
               <h6 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                 <span className="text-blue-500">💬</span> Nhận xét tổng quát
               </h6>
               <div className="text-gray-600 leading-relaxed text-sm md:text-base">
-                {feedback.feedback_text || "Hệ thống đã ghi nhận bài làm của bạn. Hãy xem chi tiết các phân tích bên dưới để cải thiện kỹ năng."}
+                {feedback.feedback_text || 'Chờ đánh giá...'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* 3. Phần bổ trợ cho nhóm Variant (AI) */}
-        {isVariant && (
-          <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            
-            {/* Phân tích kỹ năng - Style Grid nhỏ */}
-            {feedback.detailed_analysis && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Phân tích kỹ năng</h5>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {Object.entries(feedback.detailed_analysis).map(([key, data]: [string, any]) => (
-                    <div key={key} className="text-center p-3 rounded-lg bg-gray-50 border border-transparent hover:border-blue-100 transition-all">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{key}</p>
-                      <p className="text-xl font-black text-gray-700">{data.score}</p>
-                      <div className="w-full h-1 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                         <div className="h-full bg-blue-400" style={{ width: `${data.score}%` }}></div>
+        {/* Rubric for variant */}
+        {isVariant && feedback.criteria_scores && (
+          <div className="space-y-6">
+            {/* 4 Criteria */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Tiêu chí đánh giá (100pts)</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(feedback.criteria_scores || {}).map(([key, score]: [string, number]) => {
+                  const names = [
+                    'Hoàn thành nhiệm vụ giao tiếp (25)',
+                    'Tổ chức & Nội dung (25)',
+                    'Từ vựng & Diễn đạt (25)',
+                    'Ngữ pháp & chính tả (25)'
+                  ];
+                  const label = names[parseInt(key)-1] || `Tiêu chí ${key}`;
+                  return (
+                    <div key={key} className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
+                      <p className="text-xs font-bold text-gray-600 uppercase mb-2 truncate">{label}</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xl font-black text-blue-600">{score?.toFixed(1) || 0}</span>
+                        <span className="text-sm text-gray-500">/25</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all" 
+                          style={{ width: `${Math.min((score || 0) / 25 * 100, 100)}%` }}
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
-
-            {/* Hai cột: Lộ trình & Bài tập */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               {/* Lộ trình */}
-               {feedback.action_plan && (
-                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h5 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="text-green-500">🚀</span> Cần cải thiện
-                    </h5>
-                    <ul className="space-y-3">
-                      {feedback.action_plan.slice(0, 4).map((item, i) => (
-                        <li key={i} className="text-xs text-gray-600 flex gap-2">
-                          <span className="text-green-400">•</span> {item}
-                        </li>
-                      ))}
-                    </ul>
-                 </div>
-               )}
-
-               {/* Bài tập bổ trợ nhỏ gọn */}
-               {feedback.practice_exercises && (
-                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h5 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="text-purple-500">💡</span> Bài tập gợi ý
-                    </h5>
-                    <div className="space-y-3">
-                      {feedback.practice_exercises.slice(0, 2).map((ex, i) => (
-                        <div key={i} className="p-3 bg-purple-50/50 rounded-lg border border-purple-100">
-                          <p className="text-xs font-bold text-purple-800 mb-1">{ex.title}</p>
-                          <p className="text-[11px] text-gray-500 line-clamp-2">{ex.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                 </div>
-               )}
             </div>
+
+            {/* Strengths & Improvements */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {feedback.strengths?.length ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
+                  <h5 className="text-sm font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                    <span className="text-emerald-500">✅</span> Điểm mạnh
+                  </h5>
+                  <ul className="space-y-2 text-sm text-emerald-700 max-h-32 overflow-y-auto">
+                    {feedback.strengths.slice(0,5).map((item, i) => (
+                      <li key={i} className="flex gap-2 pl-2 border-l-2 border-emerald-300">
+                        <span>✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              
+              {feedback.improvements?.length ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                  <h5 className="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
+                    <span className="text-amber-500">⚠️</span> Cần cải thiện
+                  </h5>
+                  <ul className="space-y-2 text-sm text-amber-700 max-h-32 overflow-y-auto">
+                    {feedback.improvements.slice(0,5).map((item, i) => (
+                      <li key={i} className="flex gap-2 pl-2 border-l-2 border-amber-300">
+                        <span>•</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Action Plan */}
+            {feedback.action_plan?.length ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <h5 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2">
+                  <span className="text-blue-500">🚀</span> Kế hoạch cải thiện
+                </h5>
+                <ol className="space-y-3 text-sm text-blue-700 list-decimal list-inside max-h-40 overflow-y-auto">
+                  {feedback.action_plan.slice(0,6).map((item, i) => (
+                    <li key={i} className="pb-2">{item}</li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Control/Teacher fallback */}
+        {!isVariant && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
+            <h5 className="text-lg font-bold text-gray-800 mb-4">Chờ giáo viên chấm</h5>
+            <p className="text-gray-600">Bài làm đã được ghi nhận. Kết quả sẽ được cập nhật sau khi giáo viên chấm điểm.</p>
           </div>
         )}
 
         <footer className="mt-16 text-center border-t pt-8">
           <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
-            Academic Evaluation System • Fumi Mate Project
+            Fumi Mate • AI Writing Evaluation System
           </p>
         </footer>
       </div>

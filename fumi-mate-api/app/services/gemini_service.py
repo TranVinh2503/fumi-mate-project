@@ -1,16 +1,18 @@
 import os
+from dotenv import load_dotenv
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
 import json
 import time
 import threading
 import hashlib
-
 # Rate limiting for free tier
+from pathlib import Path
 _rate_limit_lock = threading.Lock()
 _last_api_call = 0
 GEMINI_RATE_LIMIT_SECONDS = 30
-
+# ... các thư viện khác
+load_dotenv()
 # Cache for free tier
 _task_cache = {}
 
@@ -494,43 +496,134 @@ REQUIRED_POINTS:
         print(f"⚠️ Gemini API error: {e}")
         return None
 
-def _generate_mock_question(genre: str, topic: str, level: str) -> Dict[str, Any]:
+def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 'N3') -> Dict[str, Any]:
     """
-    Generate mock question data when Gemini fails.
+    Grade student writing using Gemini + rubric from constants/writing_rubric.json
+    Returns structured rubric scores (0-100 total), feedback, strengths/improvements.
     """
-    # Mock questions by genre
-    mock_questions = {
-        '手紙': {
-            'content': f'「{topic}」について、友達に手紙を書きなさい。あなたの経験や気持ちを具体的に書いて、相手に伝えたいことを明確にしてください。',
-            'required_points': json.dumps([
-                '具体的な経験を書く',
-                '自分の気持ちを伝える',
-                '相手への配慮を示す'
-            ], ensure_ascii=False)
-        },
-        'スピーチ': {
-            'content': f'「{topic}」というテーマでスピーチをします。あなたの考えや経験を話し、聞いている人に伝えたいメッセージを明確にしてください。',
-            'required_points': json.dumps([
-                '自分の考えを明確に述べる',
-                '具体的な例を挙げる',
-                '聞き手に伝えたいメッセージを示す'
-            ], ensure_ascii=False)
-        },
-        '意見・感想': {
-            'content': f'「{topic}」について、あなたの意見や感想を書きなさい。理由や具体例を挙げて、自分の考えを説明してください。',
-            'required_points': json.dumps([
-                '自分の意見を明確に述べる',
-                '理由を説明する',
-                '具体的な例を挙げる'
-            ], ensure_ascii=False)
-        }
-    }
-    
-    return mock_questions.get(genre, mock_questions['意見・感想'])
+    try:
+        # Load rubric
+        rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
+        with open(rubric_path, 'r', encoding='utf-8') as f:
+            rubric_data = json.load(f)
+        
+        # Lấy thông tin bài tập
+        task_info = None
+        pre_post = rubric_data.get('writing_tasks', {}).get('pre_post_test')
+        if task_type_id == 0 and pre_post:
+            task_info = pre_post
+        else:
+            for category in ['letter', 'speech', 'opinion']:
+                for task in rubric_data.get('writing_tasks', {}).get(category, []):
+                    if task['id'] == task_type_id:
+                        task_info = task
+                        break
+                if task_info:
+                    break
+        
+        if not task_info:
+            print(f"❌ Không tìm thấy task_type_id: {task_type_id} trong rubric")
+            return {"error": f"Task type {task_type_id} not found", "overall_score": 0}
+        
+        criteria = rubric_data['rubric']['criteria']
+        notes = rubric_data.get('task_notes', {}).get(task_info.get('topic', ''), [])
+        requirements = task_info.get('requirements', pre_post.get('requirement', {}).get('must_include', [])) if 'requirements' in task_info else []
+        
+        # Build prompt: Bổ sung thêm detailed_analysis để Frontend hiển thị đẹp hơn
+        prompt = f"""Grade this Japanese writing task:
+TASK ID {task_type_id}: {task_info.get('title', task_info.get('topic', 'Unknown'))}
+Difficulty level: {difficulty}
+Student Content:
+{content}
 
-def _generate_similarity_hash(content: str) -> str:
-    """
-    Generate a hash for deduplication of similar questions.
-    Uses SHA-256 hash of the content.
-    """
-    return hashlib.sha256(content.encode('utf-8')).hexdigest()
+REQUIREMENTS: {', '.join(requirements)}
+NOTES: {', '.join(notes) if notes else 'None'}
+
+RUBRIC CRITERIA:
+"""
+        for i, crit in enumerate(criteria, 1):
+            items = ', '.join(crit['items'])
+            prompt += f"{i}. {crit['name']}: 0-{crit['max_score']} pts ({items})\n"
+        
+        prompt += """
+You must output a raw, strictly valid JSON object. Do not include markdown tags like ```json.
+Expected JSON schema:
+{
+  "criteria_scores": {
+    "1": float,
+    "2": float,
+    "3": float,
+    "4": float
+  },
+  "total_score": float,
+  "grade": "string (A/B/C/D/F)",
+  "feedback_text": "string (Đánh giá tổng quan chi tiết bằng Tiếng Việt)",
+  "strengths": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
+  "improvements": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
+  "action_plan": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
+  "detailed_analysis": {
+    "grammar": { "score": float, "issues": ["string (Tiếng Việt)"], "suggestions": ["string (Tiếng Việt)"] },
+    "vocabulary": { "score": float, "strengths": ["string (Tiếng Việt)"], "improvements": ["string (Tiếng Việt)"] },
+    "content": { "score": float, "feedback": "string (Tiếng Việt)" }
+  }
+}
+Be objective, specific to the student's content and the rubric requirements.
+IMPORTANT: All generated text values (feedback, strengths, improvements, issues, suggestions, action_plan) MUST BE WRITTEN IN VIETNAMESE.
+"""
+
+        # Gọi SDK Google GenAI MỚI
+        API_KEY = os.getenv('GEMINI_API_KEY')
+        if not API_KEY:
+            print("❌ Lỗi: Thiếu GEMINI_API_KEY trong file .env")
+            return {"error": "GEMINI_API_KEY missing", "overall_score": 50}
+        
+# 1. Khởi tạo Client
+        genai.configure(api_key=API_KEY)
+        model = genai.GenerativeModel(
+            'gemini-2.5-flash', 
+            generation_config={
+                'temperature': 0.2,
+                'max_output_tokens': 4000, # TĂNG LÊN 4000 ĐỂ KHÔNG BỊ CẮT CỤT
+                'response_mime_type': "application/json"
+            }
+        )
+        response = model.generate_content(prompt)
+        
+        # 2. Lấy chuỗi raw text và dọn dẹp khoảng trắng
+        raw_text = response.text.strip()
+        
+        # [DEBUG] IN RA MÀN HÌNH ĐỂ BẮT BỆNH
+        print("\n--- RAW AI RESPONSE ---")
+        print(raw_text)
+        print("-----------------------\n")
+        
+        # 3. Đề phòng AI vẫn nhét thẻ Markdown
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:-3].strip()
+            
+        # 4. Parse JSON từ chuỗi đã dọn dẹp
+        result = json.loads(raw_text)
+        
+        # Đồng bộ key `total_score` thành `overall_score` cho khớp Frontend
+        result['overall_score'] = round(result.get('total_score', result.get('overall_score', 0)), 1)
+        
+        print(f"✅ Gemini Graded task {task_type_id} thành công! Điểm: {result['overall_score']}/100")
+        return result
+        
+    except Exception as e:
+        # In lỗi chi tiết ra console để dễ debug
+        import traceback
+        print(f"❌ Grading error chi tiết:\n{traceback.format_exc()}")
+        
+        return {
+            "feedback_text": "Hệ thống AI hiện không thể đánh giá (Lỗi kỹ thuật).",
+            "overall_score": 50,
+            "grade": "N/A",
+            "criteria_scores": {"1": 12.5, "2": 12.5, "3": 12.5, "4": 12.5},
+            "strengths": [],
+            "improvements": [],
+            "action_plan": [],
+            "detailed_analysis": {}
+        }

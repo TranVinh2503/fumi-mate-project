@@ -16,6 +16,7 @@ class Task(db.Model):
     # JSON column to store assigned student IDs (null means visible to all students)
     assigned_students = db.Column(db.Text, nullable=True)  # Stored as JSON string like "[1,2,3]"
     start_date = db.Column(db.DateTime, nullable=True)
+    task_type_id = db.Column(db.Integer, default=None, nullable=True)  # 0-9 from writing_rubric.json
     
     # Quan hệ với bảng trung gian TaskQuestion
     task_questions = db.relationship('TaskQuestion', back_populates='task', lazy=True, cascade="all, delete-orphan")

@@ -90,6 +90,7 @@ def seed_writing_tasks():
             title=f"Luyện viết: {cat.capitalize()}",
             description=f"Bài tập viết chủ đề {t_data.get('topic', 'General')}",
             difficulty='N3',
+            task_type_id=t_data['id'],
             due_date=datetime.utcnow() + timedelta(days=7),
             created_by=teacher.id
         )

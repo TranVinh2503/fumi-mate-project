@@ -54,6 +54,7 @@ def seed_timeline_tasks():
             title=title,
             description=prompt[:100] + '...',
             difficulty='N3',
+            task_type_id=i,  # 0=pretest, 1-9=tasks
             start_date=datetime.fromisoformat(item['start']),
             due_date=datetime.fromisoformat(item['due']),
             created_by=teacher.id

@@ -142,3 +142,27 @@ export interface UpdateSubmissionRequest {
   teacher_score?: number;
   teacher_feedback?: string;
 }
+
+// Enhanced FeedbackData for rubric grading
+export interface FeedbackData {
+  grade?: string;
+  feedback_text?: string;
+  action_plan?: string[];
+  strengths?: string[];
+  improvements?: string[];
+  criteria_scores?: Record<string, number>;
+  practice_exercises?: Array<{
+    title: string;
+    description: string;
+    example?: string;
+  }>;
+  detailed_analysis?: {
+    grammar?: { score: number; issues?: string[]; suggestions?: string[] };
+    vocabulary?: { score: number; strengths?: string[]; improvements?: string[] };
+    structure?: { score: number; comments?: string };
+    fluency?: { score: number; feedback?: string };
+    content?: { score: number; feedback?: string };
+  };
+  overall_score?: number;
+  total_score?: number;
+}

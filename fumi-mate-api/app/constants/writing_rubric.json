@@ -1,0 +1,170 @@
+{
+  "writing_tasks": {
+    "pre_post_test": {
+      "id": 0,
+      "type": "essay",
+      "title": "アルバイトは学業にとって有益か",
+      "requirement": {
+        "length": 500,
+        "min_reasons": 2,
+        "must_include": [
+          "理由",
+          "具体例",
+          "結論"
+        ]
+      },
+      "prompt_ja": "大学生にとって、アルバイトは学業にとって有益か。自分の考えを500字程度で書きなさい。その際、理由を2つ以上挙げ、具体例を入れて説明しなさい。最後に、自分の立場がわかるように結論を書きなさい。",
+      "prompt_vi": "Đối với sinh viên đại học, việc làm thêm có ích cho việc học hay không? Viết khoảng 500 chữ, nêu ít nhất 2 lý do, ví dụ cụ thể và kết luận rõ ràng."
+    },
+    "letter": [
+      {
+        "id": 1,
+        "topic": "homestay_thank_you",
+        "requirements": [
+          "2 kỷ niệm",
+          "lời cảm ơn",
+          "mong muốn gặp lại"
+        ]
+      },
+      {
+        "id": 2,
+        "topic": "sick_friend",
+        "requirements": [
+          "thể hiện sự lo lắng",
+          "chúc mau khỏe",
+          "cập nhật tình hình lớp"
+        ]
+      },
+      {
+        "id": 3,
+        "topic": "advice_japanese_major",
+        "requirements": [
+          "ưu điểm ngành",
+          "khó khăn",
+          "trải nghiệm cá nhân"
+        ]
+      }
+    ],
+    "speech": [
+      {
+        "id": 4,
+        "topic": "influential_quote",
+        "requirements": [
+          "cơ duyên biết",
+          "ý nghĩa",
+          "sự thay đổi"
+        ]
+      },
+      {
+        "id": 5,
+        "topic": "failure_experience",
+        "requirements": [
+          "mô tả thất bại",
+          "cảm xúc",
+          "cách vượt qua",
+          "bài học"
+        ]
+      },
+      {
+        "id": 6,
+        "topic": "judging_by_appearance",
+        "requirements": [
+          "trải nghiệm cá nhân",
+          "phân tích vấn đề",
+          "ý kiến cá nhân"
+        ]
+      }
+    ],
+    "opinion": [
+      {
+        "id": 7,
+        "topic": "movie_review",
+        "requirements": [
+          "cảnh ấn tượng",
+          "lý do",
+          "bài học"
+        ]
+      },
+      {
+        "id": 8,
+        "topic": "student_stress",
+        "requirements": [
+          "ví dụ cụ thể",
+          "nguyên nhân",
+          "giải pháp"
+        ]
+      },
+      {
+        "id": 9,
+        "topic": "living_alone_vs_family",
+        "requirements": [
+          "ưu điểm",
+          "nhược điểm",
+          "quan điểm cá nhân"
+        ]
+      }
+    ]
+  },
+  "rubric": {
+    "total_score": 100,
+    "criteria": [
+      {
+        "name": "Hoàn thành nhiệm vụ giao tiếp",
+        "max_score": 25,
+        "items": [
+          "Đúng chủ đề",
+          "Đúng dạng bài",
+          "Văn phong phù hợp",
+          "Độ dài phù hợp"
+        ]
+      },
+      {
+        "name": "Tổ chức & Nội dung",
+        "max_score": 25,
+        "items": [
+          "Mở - Thân - Kết",
+          "Đủ ý",
+          "Logic",
+          "Liên kết"
+        ]
+      },
+      {
+        "name": "Từ vựng & Diễn đạt",
+        "max_score": 25,
+        "items": [
+          "Từ vựng phù hợp",
+          "Đa dạng",
+          "Diễn đạt tự nhiên"
+        ]
+      },
+      {
+        "name": "Ngữ pháp & chính tả",
+        "max_score": 25,
+        "items": [
+          "Ngữ pháp phù hợp",
+          "Đa dạng",
+          "Chính xác",
+          "Chính tả"
+        ]
+      }
+    ]
+  },
+  "task_notes": {
+    "letter": [
+      "có người nhận & người gửi",
+      "có lý do viết",
+      "mở & kết thư",
+      "văn phong lịch sự"
+    ],
+    "speech": [
+      "giống đang nói",
+      "có thông điệp rõ",
+      "kết luận chốt ý"
+    ],
+    "opinion": [
+      "ý kiến rõ",
+      "có lý do + ví dụ",
+      "có kết luận"
+    ]
+  }
+}

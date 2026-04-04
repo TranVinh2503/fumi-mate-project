@@ -188,6 +188,73 @@ def get_submission_detail(submission_id):
 
     return jsonify({'submission': submission_data}), 200
 
+@student_bp.route('/submissions/<int:submission_id>/grade', methods=['PATCH'])
+@jwt_required()
+def grade_submission(submission_id):
+    """Re-grade submission with AI if variant group"""
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
+    if not user or user.role != 'student':
+        return jsonify({'error': 'Unauthorized.'}), 403
+
+    submission = Submission.query.get(submission_id)
+    if not submission or submission.student_id != int(user_id):
+        return jsonify({'error': 'Not found.'}), 404
+
+    if submission.student.experimental_group != 'variant':
+        return jsonify({'error': 'AI grading only for variant group.'}), 403
+
+    task = Task.query.get(submission.task_id)
+    if not task or not task.task_type_id:
+        return jsonify({'error': 'Task missing task_type_id.'}), 400
+
+    try:
+        print(f"[RE-GRADE] Task type: {task.task_type_id}, Content len: {len(submission.content)}")
+        ai_feedback_data = generate_ai_feedback(submission.content, task=task)
+        submission.ai_feedback = json.dumps(ai_feedback_data)
+        submission.ai_score = ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0))
+        submission.status = 'ai_graded'
+        submission.updated_at = datetime.utcnow()
+        db.session.commit()
+        print(f"[RE-GRADE] Success: {submission.ai_score} ({ai_feedback_data.get('grading_method', 'unknown')})")
+        return jsonify({'message': 'Graded successfully', 'ai_score': submission.ai_score}), 200
+    except Exception as e:
+        print(f"[RE-GRADE] Failed: {e}")
+        return jsonify({'error': 'Grading failed.'}), 500
+
+    # Ensure student owns this submission
+    if submission.student_id != int(user_id):
+        return jsonify({'error': 'Unauthorized. You can only view your own submissions.'}), 403
+
+    # Parse AI feedback JSON
+    ai_feedback = {}
+    if submission.ai_feedback:
+        try:
+            ai_feedback = json.loads(submission.ai_feedback)
+        except:
+            ai_feedback = {'feedback_text': submission.ai_feedback}
+
+    task_obj = Task.query.get(submission.task_id) if submission.task_id else None
+    submission_data = {
+        'id': submission.id,
+        'experimental_group': submission.student.experimental_group,
+        'task': {
+            'id': task_obj.id if task_obj else None,
+            'title': task_obj.title if task_obj else None,
+            'description': task_obj.description if task_obj else None
+        } if task_obj else None,
+        'content': submission.content,
+        'status': submission.status,
+        'aiScore': submission.ai_score,
+        'teacherScore': submission.teacher_score,
+        'aiFeedback': ai_feedback,
+        'teacherFeedback': submission.teacher_feedback,
+        'createdAt': submission.created_at.isoformat() if submission.created_at else None,
+        'updatedAt': submission.updated_at.isoformat() if submission.updated_at else None
+    }
+
+    return jsonify({'submission': submission_data}), 200
+
 @student_bp.route('/submit-test/<int:task_id>', methods=['POST'])
 @jwt_required()
 def submit_test(task_id):
@@ -233,12 +300,18 @@ def submit_test(task_id):
         # Generate AI feedback
         try:
             task = Task.query.get(task_id)
-            ai_feedback_data = generate_ai_feedback(content, task.difficulty if task else 'N5')
+            print(f"[SUBMIT-TEST] Task: {task.task_type_id if task else None}")
+            ai_feedback_data = generate_ai_feedback(content, task=task, difficulty=task.difficulty or 'N5')
             submission.ai_feedback = json.dumps(ai_feedback_data)
-            submission.ai_score = ai_feedback_data.get('overall_score', 0)
+            submission.ai_score = ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0))
+            print(f"[SUBMIT-TEST] AI score: {submission.ai_score} | Method: {ai_feedback_data.get('grading_method', 'unknown')}")
         except Exception as e:
-            print(f"AI feedback generation failed: {e}")
-            submission.ai_feedback = json.dumps({'feedback_text': 'AI feedback generation failed', 'overall_score': 0})
+            print(f"[SUBMIT-TEST] AI feedback failed: {e}")
+            submission.ai_feedback = json.dumps({
+                'feedback_text': 'AI feedback generation failed - content saved',
+                'overall_score': 0,
+                'grading_method': 'error'
+            })
 
     submission.updated_at = datetime.utcnow()
     if action == 'submit':

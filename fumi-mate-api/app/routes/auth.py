@@ -26,17 +26,20 @@ def register():
         if len(password) < 6:
             return jsonify({"message": "Password too short, minimum 6 characters"}), 400
 
-        if role not in ["student", "teacher", "admin"]:
+        if role not in ["control", "variant", "teacher", "admin"]:
             return jsonify({"message": "Invalid role"}), 400
 
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             return jsonify({"message": "Username already exists"}), 409
 
+        import random
+        exp_group = 'control' if role != 'student' else random.choice(['control', 'variant'])
         user = User(
             username=username,
             password_hash=generate_password_hash(password),
-            role=role
+            role=role,
+            experimental_group=exp_group
         )
 
         db.session.add(user)

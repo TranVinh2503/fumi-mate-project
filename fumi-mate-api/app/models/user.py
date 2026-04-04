@@ -13,9 +13,10 @@ class User(db.Model):
         db.String(20),
         nullable=False,
         index=True
-    )  # 'admin' | 'teacher' | 'student'
+    )  # 'admin' | 'teacher' | 'control' | 'variant'
 
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    experimental_group = db.Column(db.String(20), default='control', server_default='control')  # 'control' | 'variant' for students
 
     def __repr__(self):
         return f"<User {self.username} ({self.role})>"

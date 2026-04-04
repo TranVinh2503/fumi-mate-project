@@ -22,3 +22,6 @@ class Submission(db.Model):
 
     # Self-referential relationship for parent submissions
     parent = db.relationship('Submission', remote_side=[id], backref='children')
+    
+    # Relationship to student user for experimental_group
+    student = db.relationship('User', foreign_keys=[student_id], backref='submissions')

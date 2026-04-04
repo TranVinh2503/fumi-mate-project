@@ -6,31 +6,31 @@ import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { Submission } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
 
+// Cập nhật Interface để khớp với dữ liệu thực tế từ JSON
 interface FeedbackData {
   grade?: string;
-  feedbackText?: string;
-  actionPlan?: string[];
-  practiceExercises?: Array<{
+  feedback_text?: string;
+  action_plan?: string[];
+  practice_exercises?: Array<{
     title: string;
     description: string;
     example?: string;
   }>;
-  detailedAnalysis?: {
+  detailed_analysis?: {
     grammar?: { score: number; issues?: string[]; suggestions?: string[] };
     vocabulary?: { score: number; strengths?: string[]; improvements?: string[] };
     structure?: { score: number; comments?: string };
     fluency?: { score: number; feedback?: string };
     content?: { score: number; feedback?: string };
   };
-  overallScore?: number;
+  overall_score?: number;
 }
 
 export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
   const submissionId = params.id;
   
-  const [submission, setSubmission] = useState<Submission | null>(null);
+  const [submission, setSubmission] = useState<any | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData>({});
-  const [teacherFeedbackVisible, setTeacherFeedbackVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,29 +38,36 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
     const fetchSubmission = async () => {
       try {
         setLoading(true);
-        setError(null);
         const token = localStorage.getItem('access_token');
-        if (!token) {
-          setError('Vui lòng đăng nhập lại');
-          return;
-        }
         const response = await fetch(`${API_ENDPOINTS.STUDENT_SUBMISSIONS}/${submissionId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
+        
+        if (!response.ok) throw new Error('Không thể tải thông tin bài làm');
+        
         const data = await response.json();
-        setSubmission(data.submission);
-        if (data.submission?.ai_feedback || data.submission?.aiFeedback) {
-          const feedbackStr = typeof data.submission.ai_feedback === 'string' ? data.submission.ai_feedback : JSON.stringify(data.submission.aiFeedback || {});
-          setFeedback(parseJSON<FeedbackData>(feedbackStr, {}));
+        const sub = data.submission;
+        setSubmission(sub);
+
+        // LOGIC CHIA NHÓM
+        if (sub.experimental_group === 'variant') {
+          // Nếu backend gửi string thì parse, nếu gửi object thì dùng luôn
+          const rawFeedback = sub.ai_feedback || sub.aiFeedback;
+          const parsed = typeof rawFeedback === 'string' 
+            ? parseJSON<FeedbackData>(rawFeedback, {}) 
+            : rawFeedback;
+          setFeedback(parsed || {});
+        } else {
+          // Nhóm Control: Giả lập cấu hình feedback từ dữ liệu giáo viên
+          setFeedback({
+            feedback_text: sub.teacher_feedback || sub.teacherFeedback,
+            overall_score: sub.teacher_score || sub.teacherScore
+          });
         }
       } catch (err: any) {
-        console.error('Fetch submission error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -69,222 +76,134 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
     fetchSubmission();
   }, [submissionId]);
 
-  if (!submission) {
-    return (
-      <div className="container mx-auto section-padding text-center">
-        <p className="text-xl text-gray-600">Đang tải thông tin bài làm...</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="container mx-auto p-20 text-center text-gray-500">Đang tải kết quả...</div>;
+  if (error) return <div className="container mx-auto p-20 text-center text-red-500">{error}</div>;
+  if (!submission) return null;
 
+  const isVariant = submission.experimental_group === 'variant';
+  const displayScore = isVariant ? (submission.ai_score || submission.aiScore) : (submission.teacher_score || submission.teacherScore);
+  console.log(submission)
+  console.log(submission.experimental_group)
   return (
-    <section className="section-padding mt-5 container mx-auto px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-bold">Chi tiết bài làm</h2>
-          <Link
-            href="/student/submissions"
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            ← Quay lại danh sách
+    <section className="section-padding mt-5 container mx-auto px-4 pb-20">
+      <div className="max-w-4xl mx-auto"> {/* Thu hẹp chiều rộng tối đa để tập trung nội dung */}
+        <div className="flex justify-between items-end mb-10 border-b pb-4">
+          <div>
+            <p className="text-sm text-blue-600 font-bold uppercase tracking-widest mb-1">Kết quả học tập</p>
+            <h2 className="text-3xl font-extrabold text-gray-900">Chi tiết đánh giá</h2>
+          </div>
+          <Link href="/student/submissions" className="text-sm font-medium text-gray-500 hover:text-blue-600 transition-all flex items-center gap-1">
+            <span className="text-lg">←</span> Quay lại danh sách
           </Link>
         </div>
 
-        {/* Nội dung bài viết */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-2xl font-semibold mb-4">Bài viết của bạn</h5>
-          <div className="prose max-w-none">
-            <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-              {submission.content}
-            </p>
+        {/* 1. Nội dung bài làm - Nhỏ gọn hơn */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4 text-gray-500">
+            <span className="text-lg">📄</span>
+            <span className="text-sm font-semibold uppercase">Bài làm của bạn</span>
           </div>
+          <p className="whitespace-pre-wrap text-gray-600 leading-relaxed bg-gray-50/50 p-5 rounded-lg border border-dashed">
+            {submission.content}
+          </p>
         </div>
 
-        {/* Điểm số */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-2xl font-semibold mb-4">Điểm số & Nhận xét</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Điểm AI chấm</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {submission.ai_score || '—'}
-              </p>
+        {/* 2. Điểm số & Nhận xét - Style mới: Nhỏ gọn & Tinh tế */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+          <div className="flex flex-col md:flex-row">
+            {/* Box điểm nhỏ gọn bên trái */}
+            <div className="bg-slate-50 md:w-48 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
+              <div className="relative flex items-center justify-center">
+                {/* Vòng tròn điểm số nhỏ */}
+                <div className="w-24 h-24 rounded-full border-4 border-white shadow-sm flex flex-col items-center justify-center bg-white">
+                  <span className="text-3xl font-black text-slate-800">{displayScore ?? '—'}</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">Điểm số</span>
+                </div>
+              </div>
               {feedback.grade && (
-                <p className="text-lg text-gray-700 mt-2">Xếp loại: {feedback.grade}</p>
-              )}
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Điểm giáo viên chấm</p>
-              <p className="text-3xl font-bold text-green-600">
-                {submission.teacherScore || '—'}
-              </p>
-            </div>
-          </div>
-
-          {/* Nhận xét từ AI */}
-          {feedback.feedbackText && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h6 className="font-semibold text-lg mb-2">📣 Nhận xét từ AI</h6>
-              <p className="text-gray-700 leading-relaxed">{feedback.feedbackText}</p>
-            </div>
-          )}
-
-          {/* Nhận xét từ giáo viên */}
-{submission.teacherFeedback && (
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-              <h6 className="font-semibold text-lg mb-2">👨‍🏫 Nhận xét từ giáo viên</h6>
-              <p className="text-gray-700 leading-relaxed">{submission.teacherFeedback}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Lộ trình hành động */}
-        {feedback.actionPlan && feedback.actionPlan.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">✅ Kế hoạch cải thiện</h5>
-            <ul className="space-y-3">
-              {feedback.actionPlan.map((step, index) => (
-                <li key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <span className="flex-shrink-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
-                    {index + 1}
-                  </span>
-                  <span className="text-gray-700">{step}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Bài tập thực hành */}
-        {feedback.practiceExercises && feedback.practiceExercises.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">🧠 Bài tập bổ trợ</h5>
-            <div className="space-y-4">
-              {feedback.practiceExercises.map((exercise, index) => (
-                <div key={index} className="p-4 bg-blue-50 rounded-lg">
-                  <h6 className="font-semibold text-lg mb-2">{exercise.title}</h6>
-                  <p className="text-gray-700 mb-2">{exercise.description}</p>
-                  {exercise.example && (
-                    <pre className="bg-white p-3 rounded border border-blue-200 text-sm overflow-x-auto">
-                      <code>{exercise.example}</code>
-                    </pre>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Phân tích chi tiết */}
-        {feedback.detailedAnalysis && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h5 className="text-2xl font-semibold mb-4">🔍 Phân tích chi tiết</h5>
-            <div className="space-y-6">
-              {/* Ngữ pháp */}
-              {feedback.detailedAnalysis.grammar && (
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h6 className="font-semibold text-lg">Ngữ pháp (Grammar)</h6>
-                    <span className="text-2xl font-bold text-purple-600">
-                      {feedback.detailedAnalysis.grammar.score}
-                    </span>
-                  </div>
-                  {feedback.detailedAnalysis.grammar.issues && (
-                    <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Các lỗi mắc phải:</p>
-                      <ul className="list-disc list-inside text-gray-600 text-sm">
-                        {feedback.detailedAnalysis.grammar.issues.map((issue, i) => (
-                          <li key={i}>{issue}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {feedback.detailedAnalysis.grammar.suggestions && (
-                    <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Gợi ý sửa lỗi:</p>
-                      <ul className="list-disc list-inside text-gray-600 text-sm">
-                        {feedback.detailedAnalysis.grammar.suggestions.map((suggestion, i) => (
-                          <li key={i}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                <div className="mt-4 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-tighter">
+                  Xếp loại {feedback.grade}
                 </div>
               )}
-
-              {/* Từ vựng */}
-              {feedback.detailedAnalysis.vocabulary && (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h6 className="font-semibold text-lg">Từ vựng (Vocabulary)</h6>
-                    <span className="text-2xl font-bold text-green-600">
-                      {feedback.detailedAnalysis.vocabulary.score}
-                    </span>
-                  </div>
-                  {feedback.detailedAnalysis.vocabulary.strengths && (
-                    <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Điểm mạnh:</p>
-                      <ul className="list-disc list-inside text-gray-600 text-sm">
-                        {feedback.detailedAnalysis.vocabulary.strengths.map((strength, i) => (
-                          <li key={i}>{strength}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {feedback.detailedAnalysis.vocabulary.improvements && (
-                    <div className="mt-2">
-                      <p className="text-sm font-semibold text-gray-700">Cần cải thiện:</p>
-                      <ul className="list-disc list-inside text-gray-600 text-sm">
-                        {feedback.detailedAnalysis.vocabulary.improvements.map((improvement, i) => (
-                          <li key={i}>{improvement}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Bố cục, Trôi chảy, Nội dung */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {feedback.detailedAnalysis.structure && (
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Bố cục (Structure)</h6>
-                    <p className="text-2xl font-bold text-yellow-600 mb-2">
-                      {feedback.detailedAnalysis.structure.score}
-                    </p>
-                    {feedback.detailedAnalysis.structure.comments && (
-                      <p className="text-sm text-gray-600">{feedback.detailedAnalysis.structure.comments}</p>
-                    )}
-                  </div>
-                )}
-
-                {feedback.detailedAnalysis.fluency && (
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Mạch lạc (Fluency)</h6>
-                    <p className="text-2xl font-bold text-blue-600 mb-2">
-                      {feedback.detailedAnalysis.fluency.score}
-                    </p>
-                    {feedback.detailedAnalysis.fluency.feedback && (
-                      <p className="text-sm text-gray-600">{feedback.detailedAnalysis.fluency.feedback}</p>
-                    )}
-                  </div>
-                )}
-
-                {feedback.detailedAnalysis.content && (
-                  <div className="p-4 bg-pink-50 rounded-lg">
-                    <h6 className="font-semibold mb-2">Nội dung (Content)</h6>
-                    <p className="text-2xl font-bold text-pink-600 mb-2">
-                      {feedback.detailedAnalysis.content.score}
-                    </p>
-                    {feedback.detailedAnalysis.content.feedback && (
-                      <p className="text-sm text-gray-600">{feedback.detailedAnalysis.content.feedback}</p>
-                    )}
-                  </div>
-                )}
+            </div>
+            
+            {/* Nội dung nhận xét bên phải */}
+            <div className="flex-1 p-8">
+              <h6 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-blue-500">💬</span> Nhận xét tổng quát
+              </h6>
+              <div className="text-gray-600 leading-relaxed text-sm md:text-base">
+                {feedback.feedback_text || "Hệ thống đã ghi nhận bài làm của bạn. Hãy xem chi tiết các phân tích bên dưới để cải thiện kỹ năng."}
               </div>
             </div>
           </div>
+        </div>
+
+        {/* 3. Phần bổ trợ cho nhóm Variant (AI) */}
+        {isVariant && (
+          <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            
+            {/* Phân tích kỹ năng - Style Grid nhỏ */}
+            {feedback.detailed_analysis && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Phân tích kỹ năng</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {Object.entries(feedback.detailed_analysis).map(([key, data]: [string, any]) => (
+                    <div key={key} className="text-center p-3 rounded-lg bg-gray-50 border border-transparent hover:border-blue-100 transition-all">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{key}</p>
+                      <p className="text-xl font-black text-gray-700">{data.score}</p>
+                      <div className="w-full h-1 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                         <div className="h-full bg-blue-400" style={{ width: `${data.score}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Hai cột: Lộ trình & Bài tập */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               {/* Lộ trình */}
+               {feedback.action_plan && (
+                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h5 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="text-green-500">🚀</span> Cần cải thiện
+                    </h5>
+                    <ul className="space-y-3">
+                      {feedback.action_plan.slice(0, 4).map((item, i) => (
+                        <li key={i} className="text-xs text-gray-600 flex gap-2">
+                          <span className="text-green-400">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                 </div>
+               )}
+
+               {/* Bài tập bổ trợ nhỏ gọn */}
+               {feedback.practice_exercises && (
+                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h5 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="text-purple-500">💡</span> Bài tập gợi ý
+                    </h5>
+                    <div className="space-y-3">
+                      {feedback.practice_exercises.slice(0, 2).map((ex, i) => (
+                        <div key={i} className="p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                          <p className="text-xs font-bold text-purple-800 mb-1">{ex.title}</p>
+                          <p className="text-[11px] text-gray-500 line-clamp-2">{ex.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                 </div>
+               )}
+            </div>
+          </div>
         )}
+
+        <footer className="mt-16 text-center border-t pt-8">
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
+            Academic Evaluation System • Fumi Mate Project
+          </p>
+        </footer>
       </div>
     </section>
   );

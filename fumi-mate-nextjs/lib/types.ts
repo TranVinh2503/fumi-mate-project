@@ -64,6 +64,7 @@ export type SubmissionStatus = 'draft' | 'submitted' | 'ai_graded' | 'teacher_gr
 
 export interface Submission {
   id: number | string;
+  experimental_group?: string;
   task?: {
     id: number | string;
     title: string;
@@ -72,6 +73,7 @@ export interface Submission {
   student_id: number | string;
   student_name?: string;
   task_title?: string;
+
   content: string;
   aiScore?: number;
   ai_score?: number;

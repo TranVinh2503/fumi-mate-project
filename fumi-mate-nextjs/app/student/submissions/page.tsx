@@ -91,8 +91,7 @@ export default function StudentSubmissionsPage() {
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Bài tập</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Trạng thái</th>
                   <th className="px-6 py-4 text-left font-semibold text-gray-700">Cập nhật</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm AI</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm GV</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Điểm số</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,15 +117,10 @@ export default function StudentSubmissionsPage() {
                       {formatDateTime(sub.updatedAt ?? sub.createdAt ?? sub.updated_at ?? sub.created_at ?? '') || '—'}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.aiScore || sub.ai_score ? (
-                        <span className="font-semibold text-blue-600">{sub.aiScore || sub.ai_score}</span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {sub.teacherScore || sub.teacher_score ? (
-                        <span className="font-semibold text-green-600">{sub.teacherScore || sub.teacher_score}</span>
+                      {sub.aiScore || sub.teacherScore || sub.ai_score || sub.teacher_score ? (
+                        <span className="font-semibold text-blue-600">
+                          {sub.aiScore || sub.teacherScore || sub.ai_score || sub.teacher_score}
+                        </span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}

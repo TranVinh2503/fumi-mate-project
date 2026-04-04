@@ -170,6 +170,7 @@ def get_submission_detail(submission_id):
     task_obj = Task.query.get(submission.task_id) if submission.task_id else None
     submission_data = {
         'id': submission.id,
+        'experimental_group': submission.student.experimental_group,
         'task': {
             'id': task_obj.id if task_obj else None,
             'title': task_obj.title if task_obj else None,

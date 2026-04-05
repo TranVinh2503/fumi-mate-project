@@ -168,7 +168,7 @@ export default function StudentTasksPage() {
                           : "bg-secondary text-white hover:bg-primary"
                       }`}
                     >
-                      {isOverdue ? '🚨 Nộp muộn OK' : canResubmit ? 'Nộp lại bài (Lần 2)' : (task.isDone ? 'Làm lại' : 'Bắt đầu làm bài')}
+                      {isOverdue ? '🚨 Nộp muộn' : canResubmit ? 'Nộp lại bài (Lần 2)' : (task.isDone ? 'Làm lại' : 'Bắt đầu làm bài')}
                     </Link>
                   </div>
                 )}

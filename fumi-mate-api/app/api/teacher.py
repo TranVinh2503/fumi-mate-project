@@ -336,7 +336,7 @@ def get_submission_detail(submission_id):
             'content': sub.content,
             'ai_score': sub.ai_score,
             'ai_feedback': ai_feedback,
-'teacher_score': sub.teacher_score,
+            'teacher_score': sub.teacher_score,
             'teacher_feedback': sub.teacher_feedback,
             'attemptCount': sub.attempt_count,
             'lateMinutes': sub.late_minutes,
@@ -359,39 +359,47 @@ def get_submission_detail(submission_id):
 @role_required('teacher')
 def grade_submission(submission_id):
     """
-    Grade a submission
-    Body: {"teacher_score": int 0-100, "teacher_feedback": str}
+    Grade a submission with full AI-mirror structure
+    Body: AI FeedbackData JSON (criteria_scores, overall_score, feedback_text, strengths[], etc.)
     """
     try:
         user_id = get_current_user_id()
         data = request.get_json()
         
-        # 1. Kiểm tra an toàn cả 2 trường dữ liệu
-        if not data or 'teacher_score' not in data:
-            return jsonify({'error': 'Missing teacher_score'}), 400
-            
-        teacher_feedback = data.get('teacher_feedback', '')
-        if not teacher_feedback:
-             return jsonify({'error': 'Missing teacher_feedback'}), 400
+        if not data:
+            return jsonify({'error': 'Missing JSON data'}), 400
+        
+        # Required AI-mirror fields
+        required = ['overall_score', 'feedback_text', 'criteria_scores']
+        for field in required:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        overall_score = data['overall_score']
+        if not isinstance(overall_score, (int, float)) or overall_score < 0 or overall_score > 100:
+            return jsonify({'error': 'overall_score must be 0-100'}), 400
+        
+        # Validate criteria_scores
+        criteria = data.get('criteria_scores', {})
+        for i in ['1', '2', '3', '4']:
+            if i not in criteria or criteria[i] < 0 or criteria[i] > 25:
+                return jsonify({'error': f'criteria_scores.{i} must be 0-25'}), 400
+        
+        # Parse teacher_feedback JSON (full AI structure)
+        full_feedback = data  # Already JSON
+        full_feedback['grading_method'] = 'teacher_manual'
         
         sub = Submission.query.get(submission_id)
         if not sub:
             return jsonify({'error': 'Submission not found'}), 404
         
         task = Task.query.get(sub.task_id)
-        
-        # 2. LƯU Ý: Đảm bảo user_id hiện tại thực sự là người tạo task. 
-        # Nếu mô hình của bạn cho phép giáo viên khác chấm, hãy bỏ điều kiện created_by đi.
         if not task or task.created_by != int(user_id):
-            return jsonify({'error': 'Not authorized for this task. You are not the creator.'}), 403
+            return jsonify({'error': 'Not authorized for this task'}), 403
         
-        teacher_score = data['teacher_score']
-        
-        if not isinstance(teacher_score, (int, float)) or teacher_score < 0 or teacher_score > 100:
-            return jsonify({'error': 'teacher_score must be number 0-100'}), 400
-        
-        sub.teacher_score = float(teacher_score)
-        sub.teacher_feedback = teacher_feedback
+        # Save mirror structure
+        sub.teacher_score = float(overall_score)
+        sub.teacher_feedback = json.dumps(full_feedback)
         sub.status = 'teacher_graded'
         sub.updated_at = datetime.utcnow()
         
@@ -399,18 +407,15 @@ def grade_submission(submission_id):
         
         return jsonify({
             'success': True,
-            'message': 'Submission graded successfully',
-            'submission': {
-                'id': sub.id,
-                'teacher_score': sub.teacher_score,
-                'teacher_feedback': sub.teacher_feedback,
-                'status': sub.status
-            }
+            'message': 'Graded with full rubric structure',
+            'teacher_score': sub.teacher_score,
+            'grading_method': 'teacher_manual'
         }), 200
         
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON in teacher_feedback'}), 400
     except Exception as e:
         db.session.rollback()
-        # In thêm traceback để dễ debug trên server
         import traceback
-        print(f"Error grading: {traceback.format_exc()}")
-        return jsonify({'error': 'Server error, check backend logs'}), 500
+        print(f"Teacher grading error: {traceback.format_exc()}")
+        return jsonify({'error': 'Server error'}), 500

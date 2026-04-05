@@ -254,7 +254,6 @@ def grade_submission(submission_id):
     }
 
     return jsonify({'submission': submission_data}), 200
-
 @student_bp.route('/submit-test/<int:task_id>', methods=['POST'])
 @jwt_required()
 def submit_test(task_id):
@@ -295,23 +294,40 @@ def submit_test(task_id):
     if action == 'submit':
         if submission and submission.status == 'teacher_graded' and submission.attempt_count < 2:
             submission.attempt_count += 1
+        # Đặt mặc định là 'submitted' cho control group hoặc lỡ AI lỗi
         submission.status = 'submitted'
 
-        # Generate AI feedback
+    # A/B test: AI only for variant group (safe student load)
+    student = User.query.get(submission.student_id)
+    if student and student.experimental_group == 'variant':
         try:
             task = Task.query.get(task_id)
-            print(f"[SUBMIT-TEST] Task: {task.task_type_id if task else None}")
+            print(f"[SUBMIT-TEST] Variant AI - Task: {task.task_type_id if task else None}")
             ai_feedback_data = generate_ai_feedback(content, task=task, difficulty=task.difficulty or 'N5')
             submission.ai_feedback = json.dumps(ai_feedback_data)
             submission.ai_score = ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0))
-            print(f"[SUBMIT-TEST] AI score: {submission.ai_score} | Method: {ai_feedback_data.get('grading_method', 'unknown')}")
+            print(f"[SUBMIT-TEST] Variant AI score: {submission.ai_score}")
+            
+            # 👉 THÊM ĐOẠN NÀY: Nếu nộp bài và AI chấm thành công, đổi status thành ai_graded
+            if action == 'submit':
+                submission.status = 'ai_graded'
+                
         except Exception as e:
-            print(f"[SUBMIT-TEST] AI feedback failed: {e}")
+            print(f"[SUBMIT-TEST] Variant AI failed: {e}")
             submission.ai_feedback = json.dumps({
-                'feedback_text': 'AI feedback generation failed - content saved',
+                'feedback_text': 'AI grading error - waiting teacher',
                 'overall_score': 0,
-                'grading_method': 'error'
+                'grading_method': 'ai_error'
             })
+            # Nếu AI lỗi, status vẫn giữ nguyên là 'submitted' để chờ giáo viên
+    else:
+        print(f"[SUBMIT-TEST] Control/unknown group - skip AI, wait teacher")
+        submission.ai_feedback = json.dumps({
+            'feedback_text': 'Control group - Đợi giáo viên chấm điểm',
+            'overall_score': None,
+            'grading_method': 'control_wait_teacher'
+        })
+        # Control group không có AI, giữ nguyên status 'submitted'
 
     submission.updated_at = datetime.utcnow()
     if action == 'submit':

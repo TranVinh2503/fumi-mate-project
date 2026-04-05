@@ -1,299 +1,477 @@
-'use client';
+'use client'
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
-import { Submission } from '@/lib/types';
+import { Submission, TeacherFeedbackData } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
 
-interface FeedbackData {
-  grade?: string;
-  feedbackText?: string;
-  actionPlan?: string[];
-  practiceExercises?: Array<{
-    title: string;
-    description: string;
-    example?: string;
-  }>;
-  detailedAnalysis?: {
-    grammar?: { score: number; issues?: string[]; suggestions?: string[] };
-    vocabulary?: { score: number; strengths?: string[]; improvements?: string[] };
-    structure?: { score: number; comments?: string };
-    fluency?: { score: number; feedback?: string };
-    content?: { score: number; feedback?: string };
-  };
-  overallScore?: number;
-}
+const CRITERIA = [
+  { id: '1', name: 'Hoàn thành nhiệm vụ giao tiếp', max: 25 },
+  { id: '2', name: 'Tổ chức & Nội dung', max: 25 },
+  { id: '3', name: 'Từ vựng & Diễn đạt', max: 25 },
+  { id: '4', name: 'Ngữ pháp & chính tả', max: 25 },
+];
+
+const GRADES = ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F'];
 
 export default function TeacherGradeSubmissionPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const submissionId = params.id;
   
   const [submission, setSubmission] = useState<Submission | null>(null);
-  const [aiFeedback, setAiFeedback] = useState<FeedbackData>({});
-  const [teacherScore, setTeacherScore] = useState('');
-  const [teacherFeedback, setTeacherFeedback] = useState('');
+  const [aiFeedback, setAiFeedback] = useState<any>({});
+  const [formData, setFormData] = useState<TeacherFeedbackData>({
+    overall_score: 0,
+    grade: '',
+    feedback_text: '',
+    criteria_scores: { '1': 0, '2': 0, '3': 0, '4': 0 },
+    strengths: [],
+    improvements: [],
+    action_plan: [],
+    detailed_analysis: {
+      grammar: { score: 0 },
+      vocabulary: { score: 0 },
+      structure: { score: 0 },
+      fluency: { score: 0 },
+      content: { score: 0 },
+    },
+    grading_method: 'teacher_manual',
+  });
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-// 1. Đưa fetchSubmission ra ngoài và bọc bằng useCallback
-const fetchSubmission = useCallback(async () => {
-  const token = localStorage.getItem('access_token');
-  if (!token) return;
+  const fetchSubmission = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
 
-  try {
-    const response = await fetch(API_ENDPOINTS.TEACHER_SUBMISSIONS + `/${submissionId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    try {
+      const response = await fetch(`${API_ENDPOINTS.TEACHER_SUBMISSIONS}/${submissionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      setSubmission(data.submission);
+      
+      // Pre-fill from teacher_feedback if exists
+      if (data.submission.teacher_feedback) {
+        const parsed = parseJSON<TeacherFeedbackData>(data.submission.teacher_feedback, formData);
+        setFormData(parsed);
       }
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch submission');
+      
+      // Parse AI for reference
+      if (data.submission.ai_feedback) {
+        setAiFeedback(parseJSON(data.submission.ai_feedback, {}));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    const data = await response.json();
-    setSubmission(data.submission);
-    setTeacherScore(((data.submission.teacherScore ?? data.submission.teacher_score)?.toString()) || '');
-    setTeacherFeedback((data.submission.teacherFeedback ?? data.submission.teacher_feedback) || '');  
-    
-    if (data.submission.ai_feedback) {
-      const parsed = parseJSON<FeedbackData>(data.submission.ai_feedback, {});
-      setAiFeedback(parsed);
-    }
-  } catch (err) {
-    console.error('Error fetching submission:', err);
-  }
-}, [submissionId]);
+  }, [submissionId]);
 
-  // 2. Chỉ việc gọi hàm đó trong useEffect
   useEffect(() => {
     fetchSubmission();
   }, [fetchSubmission]);
+  
+  // Xác định xem bài đã chấm hay chưa
+  const isGraded = Boolean(submission?.teacher_feedback);
+
+  // Hàm tính điểm (để dùng chung cho cả nút bấm và tự động nhảy)
+  const handleAutoCalculateGrade = useCallback(() => {
+    const score = formData.overall_score;
+    let autoGrade = 'F';
+
+    if (score >= 90) autoGrade = 'A';
+    else if (score >= 85) autoGrade = 'B+';
+    else if (score >= 80) autoGrade = 'B';
+    else if (score >= 75) autoGrade = 'C+';
+    else if (score >= 70) autoGrade = 'C';
+    else if (score >= 65) autoGrade = 'D+';
+    else if (score >= 60) autoGrade = 'D';
+
+    setFormData(prev => ({ ...prev, grade: autoGrade }));
+  }, [formData.overall_score]);
+
+  // Tự động nhảy điểm khi overall_score thay đổi
+  useEffect(() => {
+    if (!submission || isGraded) return;
+    handleAutoCalculateGrade();
+  }, [formData.overall_score, submission, isGraded, handleAutoCalculateGrade]);
+
+  const updateCriteria = (id: string, score: number) => {
+    setFormData(prev => ({
+      ...prev,
+      criteria_scores: { ...prev.criteria_scores!, [id]: Math.max(0, Math.min(25, score)) },
+      overall_score: Object.values({ ...prev.criteria_scores!, [id]: score }).reduce((a, b) => a + (b as number), 0)
+    }));
+  };
+
+  const addTag = (field: 'strengths' | 'improvements' | 'action_plan', tag: string) => {
+    if (tag.trim()) {
+      setFormData(prev => {
+        const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+        return {
+          ...prev,
+          [field]: [...currentList, tag.trim()]
+        };
+      });
+    }
+  };
+  
+  const removeTag = (field: 'strengths' | 'improvements' | 'action_plan', index: number) => {
+    setFormData(prev => {
+      const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+      return {
+        ...prev,
+        [field]: currentList.filter((_: any, i: number) => i !== index)
+      };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const score = parseInt(teacherScore);
-    if (isNaN(score) || score < 0 || score > 100) {
-      setMessage('Please enter a valid score between 0 and 100');
+    if (formData.overall_score === 0 || !formData.feedback_text!.trim()) {
+      setMessage('Vui lòng điền điểm số và nhận xét');
       return;
     }
-    
-    // Đảm bảo teacherFeedback không rỗng (dù đã có required ở HTML)
-    if (!teacherFeedback.trim()) {
-      setMessage('Please provide feedback');
-      return;
-    }
-    
+
+    // Tự động "vét" chữ còn sót lại trong các ô input (nếu giáo viên quên bấm Thêm)
+    const payloadToSubmit = { ...formData };
+    ['strengths', 'improvements', 'action_plan'].forEach((field) => {
+      const input = document.getElementById(`input-${field}`) as HTMLInputElement;
+      if (input && input.value.trim()) {
+        const currentList = Array.isArray(payloadToSubmit[field as keyof TeacherFeedbackData]) 
+          ? payloadToSubmit[field as keyof TeacherFeedbackData] as string[]
+          : [];
+        // Thêm nội dung còn sót vào payload gửi đi
+        (payloadToSubmit[field as keyof TeacherFeedbackData] as string[]) = [...currentList, input.value.trim()];
+        input.value = ''; // Xóa trắng ô input
+      }
+    });
+
     const token = localStorage.getItem('access_token');
     try {
+      setLoading(true);
       const response = await fetch(API_ENDPOINTS.TEACHER_GRADE_SUBMISSION(parseInt(submissionId)), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          teacher_score: score, 
-          teacher_feedback: teacherFeedback.trim() 
-        }),
+        // Gửi cái payload thông minh đã vét hết chữ đi
+        body: JSON.stringify(payloadToSubmit), 
       });
 
-      const data = await response.json(); // Đọc response trước
-
       if (!response.ok) {
-        // Ném lỗi chi tiết từ backend trả về (nếu có)
-        throw new Error(data.error || 'Failed to grade submission');
+        const error = await response.json();
+        throw new Error(error.error || 'Submit failed');
       }
 
-      setMessage('✅ Grade submitted successfully!');
-      // Refetch to show updated data
-      fetchSubmission();
-      setTimeout(() => {
-        router.push('/teacher/submissions');
-      }, 1500);
+      setMessage('✅ Đã chấm điểm thành công!');
+      setTimeout(() => router.push('/teacher/submissions'), 1500);
     } catch (err: any) {
-      // Hiển thị lỗi chi tiết ra UI để dễ debug hơn
-      setMessage(`❌ Error: ${err.message}`);
-      console.error('Grade submission error:', err);
+      setMessage(`❌ Lỗi: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!submission) {
-    return (
-      <div className="container mx-auto section-padding text-center">
-        <p className="text-xl text-gray-600">Loading submission...</p>
-      </div>
-    );
-  }
+  if (loading || !submission) return <div>Loading...</div>;
 
   return (
-    <section className="section-padding mt-5 container mx-auto px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-bold">Grade Submission</h2>
+    <section className="container mx-auto p-8 max-w-6xl">
+      <div className="mb-8 flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Chấm điểm chi tiết</h1>
+        <Link href="/teacher/submissions" className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+          ← Danh sách
+        </Link>
+      </div>
+
+      {message && (
+        <div className={`p-4 rounded-lg mb-6 ${message.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {message}
+        </div>
+      )}
+
+      {/* Cảnh báo nếu bài đã chấm */}
+      {isGraded && (
+        <div className="p-4 rounded-lg mb-6 bg-yellow-100 text-yellow-800 flex items-center gap-2 border border-yellow-200 shadow-sm">
+          <span className="text-xl">🔒</span> 
+          <span className="font-medium">Bài nộp này đã được chấm điểm.</span> 
+          Bạn chỉ có thể xem chi tiết và không thể chỉnh sửa.
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Left: Submission Info + Content */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <h3 className="text-xl font-semibold mb-4">Thông tin bài nộp</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div><strong>Sinh viên:</strong> {submission.student_name}</div>
+              <div><strong>Bài tập:</strong> {submission.task_title}</div>
+              <div>
+                <strong>Trạng thái: </strong> 
+                <span className={`px-2 py-1 rounded text-xs font-bold ${isGraded ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {isGraded ? 'Đã chấm' : 'Chờ chấm'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <h3 className="text-xl font-semibold mb-4">Bài viết</h3>
+            <div className="bg-gray-50 p-6 rounded-lg min-h-[200px] max-h-[400px] overflow-auto whitespace-pre-wrap">
+              {submission.content}
+            </div>
+            <p className="text-sm text-gray-500 mt-2">Độ dài: {submission.content.length} ký tự</p>
+          </div>
+        </div>
+
+        {/* Right: Current Score Summary */}
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              📊 Tổng điểm hiện tại
+            </h3>
+            <div className="text-4xl font-black text-blue-600 text-center mb-4">
+              {formData.overall_score}/100
+            </div>
+            <div className="space-y-1 text-sm">
+              {CRITERIA.map(({ id }) => (
+                <div key={id} className="flex justify-between">
+                  <span>C{ id }:</span>
+                  <span className="font-semibold">{formData.criteria_scores![id] || 0}/{CRITERIA[parseInt(id)-1].max}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {aiFeedback.feedback_text && (
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm">
+              <h4 className="font-semibold mb-2 text-blue-900">🤖 Tham khảo AI</h4>
+              <p className="text-sm text-blue-800 leading-relaxed">{aiFeedback.feedback_text}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Full Rubric Form */}
+      <form onSubmit={handleSubmit} className="mt-12 bg-white p-8 rounded-2xl shadow-xl border">
+        <h2 className="text-2xl font-bold mb-8">Form chấm điểm chi tiết</h2>
+
+        {/* 1. Criteria Scores */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Tiêu chí (25 điểm mỗi tiêu chí)</h3>
+            {CRITERIA.map(({ id, name, max }) => (
+              <div key={id} className="mb-6">
+                <label className="block text-sm font-medium mb-2">{name}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max={max}
+                  value={formData.criteria_scores![id] || 0}
+                  onChange={(e) => updateCriteria(id, parseInt(e.target.value))}
+                  disabled={isGraded}
+                  className={`w-full h-2 rounded-lg appearance-none accent-blue-500 ${isGraded ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-200 cursor-pointer'}`}
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>0</span>
+                  <span className={`font-semibold ${isGraded ? 'text-gray-500' : 'text-blue-600'}`}>
+                    {formData.criteria_scores![id] || 0}
+                  </span>
+                  <span>{max}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 2. Overall & Grade */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Tổng quan</h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Tổng điểm (/100)</label>
+              <input
+                type="number"
+                value={formData.overall_score}
+                onChange={(e) => setFormData(prev => ({ ...prev, overall_score: parseInt(e.target.value) || 0 }))}
+                min="0"
+                max="100"
+                disabled={isGraded}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed font-bold text-blue-600"
+                required
+              />
+            </div>
+
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium">Xếp loại</label>
+                {/* Nút bấm tự động tính (chỉ hiện khi chưa chấm) */}
+                {!isGraded && (
+                  <button
+                    type="button"
+                    onClick={handleAutoCalculateGrade}
+                    className="text-xs bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1.5 rounded border border-green-200 transition-colors flex items-center gap-1 font-medium active:scale-95"
+                    title="Tính lại xếp loại dựa trên tổng điểm"
+                  >
+                    🪄 Tự động tính
+                  </button>
+                )}
+              </div>
+              <select
+                value={formData.grade || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, grade: e.target.value }))}
+                disabled={isGraded} 
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold ${
+                  isGraded 
+                    ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-300 appearance-none' 
+                    : 'bg-white text-gray-900 border-gray-300 cursor-pointer'
+                }`}
+              >
+                <option value="">Chọn xếp loại...</option>
+                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Feedback Text */}
+        <div className="mb-8">
+          <label className="block text-lg font-semibold mb-3">Nhận xét tổng quát *</label>
+          <textarea
+            value={formData.feedback_text}
+            onChange={(e) => setFormData(prev => ({ ...prev, feedback_text: e.target.value }))}
+            rows={4}
+            disabled={isGraded}
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-vertical disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+            placeholder="Nhận xét tổng quát về bài viết, điểm mạnh, điểm cần cải thiện..."
+            required
+          />
+        </div>
+
+        {/* 4. Tag Lists */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {[['strengths', 'Điểm mạnh'], ['improvements', 'Cần cải thiện'], ['action_plan', 'Kế hoạch']].map(([field, title]) => {
+            const rawValue = formData[field as keyof TeacherFeedbackData];
+            const tags = Array.isArray(rawValue) 
+              ? rawValue 
+              : (typeof rawValue === 'string' && rawValue ? [rawValue] : []);
+
+            return (
+              <div key={field} className="bg-gray-50 p-4 rounded-xl border">
+                <label className="block text-lg font-semibold mb-3">{title}</label>
+                
+                {!isGraded && (
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      id={`input-${field}`}
+                      placeholder={`Thêm ${title.toLowerCase()}...`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addTag(field as any, e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                      className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById(`input-${field}`) as HTMLInputElement;
+                        addTag(field as any, input.value);
+                        input.value = '';
+                      }}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap text-sm font-medium transition-colors"
+                    >
+                      Thêm
+                    </button>
+                  </div>
+                )}
+                
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                  {tags.length > 0 ? (
+                    tags.map((tag, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-white text-blue-700 px-3 py-1.5 rounded-full text-sm font-medium border border-blue-200 shadow-sm">
+                        <span>{tag}</span>
+                        {!isGraded && (
+                          <button
+                            type="button"
+                            onClick={() => removeTag(field as any, i)}
+                            className="text-blue-400 hover:text-red-500 ml-1 font-bold transition-colors"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    isGraded && (
+                      <p className="text-sm text-gray-500 italic py-2">Không có ghi chú</p>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 5. Detailed Analysis */}
+        <div>
+          <h3 className="text-lg font-semibold mb-6">Phân tích chi tiết</h3>
+          <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border">
+            {['grammar', 'vocabulary', 'structure', 'fluency', 'content'].map((area) => (
+              <div key={area}>
+                <label className="block text-sm font-medium mb-2 capitalize">{area}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  value={formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}
+                  onChange={(e) => {
+                    const newAnalysis = { ...formData.detailed_analysis! };
+                    newAnalysis[area as keyof typeof newAnalysis] = { ...newAnalysis[area as keyof typeof newAnalysis], score: parseInt(e.target.value) };
+                    setFormData(prev => ({ ...prev, detailed_analysis: newAnalysis }));
+                  }}
+                  disabled={isGraded}
+                  className={`w-full h-2 rounded-lg appearance-none accent-green-500 ${isGraded ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 cursor-pointer'}`}
+                />
+                <div className="flex justify-between text-xs mt-1">
+                  <span>0</span>
+                  <span className={isGraded ? 'text-gray-500 font-semibold' : 'text-green-600 font-semibold'}>
+                    {formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}
+                  </span>
+                  <span>20</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 mt-12">
+          {!isGraded && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-transform active:scale-95"
+            >
+              {loading ? 'Đang lưu...' : 'Hoàn tất chấm điểm'}
+            </button>
+          )}
           <Link
             href="/teacher/submissions"
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            className={`py-4 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-colors text-center ${isGraded ? 'w-full' : 'px-8'}`}
           >
-            ← Back to Submissions
+            {isGraded ? 'Quay lại danh sách' : 'Hủy'}
           </Link>
         </div>
-
-        {message && (
-          <div className={`alert ${message.includes('✅') ? 'alert-success' : 'alert-error'} mb-6`}>
-            {message}
-          </div>
-        )}
-
-        {/* Student Info */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Student:</p>
-              <p className="font-semibold text-lg">
-{submission.student_name || submission.student_id}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Task:</p>
-              <p className="font-semibold text-lg">
-                {submission.task_title || 'N/A'}
-              </p>
-            </div>
-            <div>
-              {/* <p className="text-sm text-gray-600">AI Score:</p>
-              <p className="font-semibold text-lg text-blue-600">
-                {submission.ai_score || '—'}
-              </p> */}
-            </div>
-          </div>
-        </div>
-
-        {/* Student's Writing */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-2xl font-semibold mb-4">Student's Writing</h5>
-          <div className="prose max-w-none">
-            <p className="whitespace-pre-wrap text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg">
-              {submission.content}
-            </p>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            Character count: {submission.content.length}
-          </div>
-        </div>
-
-        {/* AI Feedback Reference */}
-        {aiFeedback.feedbackText && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6 mb-6">
-            <h5 className="text-xl font-semibold mb-3">🤖 AI Feedback (Reference)</h5>
-            <p className="text-gray-700 mb-4">{aiFeedback.feedbackText}</p>
-            {aiFeedback.grade && (
-              <p className="text-sm text-gray-600">AI Grade: <span className="font-semibold">{aiFeedback.grade}</span></p>
-            )}
-          </div>
-        )}
-
-        {/* Grading Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-6">
-          <h5 className="text-2xl font-semibold mb-6">Your Grading</h5>
-          
-          <div className="mb-6">
-            <label htmlFor="teacherScore" className="block text-lg font-semibold mb-3">
-              Score (0-100) *
-            </label>
-            <input
-              type="number"
-              id="teacherScore"
-              value={teacherScore}
-              onChange={(e) => setTeacherScore(e.target.value)}
-              className="custom-input"
-              min="0"
-              max="100"
-              placeholder="Enter score (0-100)"
-              required
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              AI suggested score: {submission.ai_score || 'N/A'}
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="teacherFeedback" className="block text-lg font-semibold mb-3">
-              Your Feedback *
-            </label>
-            <textarea
-              id="teacherFeedback"
-              value={teacherFeedback}
-              onChange={(e) => setTeacherFeedback(e.target.value)}
-              className="custom-textarea"
-              rows={10}
-              placeholder="Provide detailed feedback to help the student improve..."
-              required
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              Be specific and constructive. Highlight both strengths and areas for improvement.
-            </p>
-          </div>
-          {submission.status !== 'teacher_graded' ? (
-              <div className="flex gap-4">
-              <button type="submit"
-                className="bg-secondary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors">
-                Submit Grade
-              </button>
-              <Link
-                href="/teacher/submissions"
-                className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors inline-flex items-center" >
-                Cancel
-              </Link>
-            </div>
-          ) : (
-            <div className="flex gap-4">
-            <button type="button"
-              disabled
-              className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold inline-flex items-center">
-              Đã chấm điểm
-            </button>
-          </div>
-          )}
-          
-        </form>
-
-        {/* AI Detailed Analysis (Collapsible) */}
-        {aiFeedback.detailedAnalysis && (
-          <details className="bg-white rounded-lg shadow-lg p-6 mt-6">
-            <summary className="text-xl font-semibold cursor-pointer hover:text-primary">
-              📊 View AI Detailed Analysis
-            </summary>
-            <div className="mt-4 space-y-4">
-              {aiFeedback.detailedAnalysis.grammar && (
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <h6 className="font-semibold mb-2">Grammar: {aiFeedback.detailedAnalysis.grammar.score}</h6>
-                  {aiFeedback.detailedAnalysis.grammar.issues && (
-                    <ul className="list-disc list-inside text-sm text-gray-600">
-                      {aiFeedback.detailedAnalysis.grammar.issues.map((issue, i) => (
-                        <li key={i}>{issue}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              {aiFeedback.detailedAnalysis.vocabulary && (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <h6 className="font-semibold mb-2">Vocabulary: {aiFeedback.detailedAnalysis.vocabulary.score}</h6>
-                  {aiFeedback.detailedAnalysis.vocabulary.strengths && (
-                    <ul className="list-disc list-inside text-sm text-gray-600">
-                      {aiFeedback.detailedAnalysis.vocabulary.strengths.map((strength, i) => (
-                        <li key={i}>{strength}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          </details>
-        )}
-      </div>
+      </form>
     </section>
   );
 }

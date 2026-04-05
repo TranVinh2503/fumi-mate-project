@@ -143,6 +143,10 @@ export interface UpdateSubmissionRequest {
   teacher_feedback?: string;
 }
 
+export interface TeacherFeedbackData extends FeedbackData {
+  grading_method?: 'teacher_manual';
+}
+
 // Enhanced FeedbackData for rubric grading
 export interface FeedbackData {
   grade?: string;

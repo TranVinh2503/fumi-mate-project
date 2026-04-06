@@ -152,10 +152,10 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
               {feedback.criteria_scores && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${isVariant ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                    {/* <span className={`px-2 py-1 rounded-full text-xs font-bold ${isVariant ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                       {isVariant ? '🤖 Nguồn: AI' : '👨‍🏫 Nguồn: Giáo viên'}
-                    </span>
-                    Tiêu chí đánh giá (100pts)
+                    </span> */}
+                    Tiêu chí đánh giá
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(feedback.criteria_scores || {}).map(([key, score]: [string, number]) => {

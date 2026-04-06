@@ -1,175 +1,183 @@
 {
-  "writing_tasks": {
-    "pre_post_test": {
+  "tasks": [
+    {
       "id": 0,
-      "type": "essay",
+      "task_type": "essay",
+      "topic_code": "pre_post_test",
       "title": "アルバイトは学業にとって有益か",
-      "requirement": {
-        "length": 500,
-        "min_reasons": 2,
-        "must_include": [
-          "理由",
-          "具体例",
-          "結論"
-        ]
-      },
       "prompt_ja": "大学生にとって、アルバイトは学業にとって有益か。自分の考えを500字程度で書きなさい。その際、理由を2つ以上挙げ、具体例を入れて説明しなさい。最後に、自分の立場がわかるように結論を書きなさい。",
-      "prompt_vi": "Đối với sinh viên đại học, việc làm thêm có ích cho việc học hay không? Viết khoảng 500 chữ, nêu ít nhất 2 lý do, ví dụ cụ thể và kết luận rõ ràng."
+      "prompt_vi": "Đối với sinh viên đại học, việc làm thêm có ích cho việc học hay không? Viết khoảng 500 chữ, nêu ít nhất 2 lý do, ví dụ cụ thể và kết luận rõ ràng.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Lý do (ít nhất 2)", "Ví dụ cụ thể", "Kết luận rõ ràng"],
+        "guidelines": ["Có bố cục Mở - Thân - Kết rõ ràng", "Văn phong viết tiểu luận (だ・である)"]
+      }
     },
-
-    "letter": [
-      {
-        "id": 1,
-        "topic": "homestay_thank_you",
-        "requirements": [
-          "2 kỷ niệm",
-          "lời cảm ơn",
-          "mong muốn gặp lại"
-        ]
-      },
-      {
-        "id": 2,
-        "topic": "sick_friend",
-        "requirements": [
-          "thể hiện sự lo lắng",
-          "chúc mau khỏe",
-          "cập nhật tình hình lớp"
-        ]
-      },
-      {
-        "id": 3,
-        "topic": "advice_japanese_major",
-        "requirements": [
-          "ưu điểm ngành",
-          "khó khăn",
-          "trải nghiệm cá nhân"
-        ]
+    {
+      "id": 1,
+      "task_type": "letter",
+      "topic_code": "homestay_thank_you",
+      "title": "ホストファミリーへの感謝の手紙",
+      "prompt_ja": "日本でのホームステイを終えて帰国しました。お世話になったホストファミリーに感謝の気持ちを伝える手紙を書きなさい。手紙には、ホームステイ中の楽しかった思い出を2つ挙げ、またいつか会いたいという気持ちを含めること。",
+      "prompt_vi": "Bạn đã về nước sau khi kết thúc chương trình homestay ở Nhật Bản. Hãy viết một bức thư cảm ơn gửi đến gia đình host. Trong thư, hãy nêu 2 kỷ niệm đáng nhớ nhất và bày tỏ mong muốn được gặp lại họ trong tương lai.",
+      "requirements": {
+        "length": 400,
+        "key_points": ["Kể 2 kỷ niệm đáng nhớ", "Bày tỏ lời cảm ơn", "Mong muốn được gặp lại"],
+        "guidelines": ["Có người nhận & người gửi", "Có lý do viết thư ở đầu thư", "Có lời chào mở và kết thư", "Sử dụng văn phong lịch sự (です・ます)"]
       }
-    ],
-
-    "speech": [
-      {
-        "id": 4,
-        "topic": "influential_quote",
-        "requirements": [
-          "cơ duyên biết",
-          "ý nghĩa",
-          "sự thay đổi"
-        ]
-      },
-      {
-        "id": 5,
-        "topic": "failure_experience",
-        "requirements": [
-          "mô tả thất bại",
-          "cảm xúc",
-          "cách vượt qua",
-          "bài học"
-        ]
-      },
-      {
-        "id": 6,
-        "topic": "judging_by_appearance",
-        "requirements": [
-          "trải nghiệm cá nhân",
-          "phân tích vấn đề",
-          "ý kiến cá nhân"
-        ]
+    },
+    {
+      "id": 2,
+      "task_type": "letter",
+      "topic_code": "sick_friend",
+      "title": "入院した友達への励ましの手紙",
+      "prompt_ja": "クラスメイトが病気で1週間入院することになりました。その友達を励ます手紙を書きなさい。手紙には、心配している気持ち、早く良くなるようにという願い、そして最近のクラスの様子を含めること。",
+      "prompt_vi": "Một người bạn cùng lớp phải nhập viện 1 tuần do bị ốm. Hãy viết một bức thư động viên bạn ấy. Trong thư, thể hiện sự lo lắng, chúc bạn mau khỏe và cập nhật tình hình lớp học gần đây để bạn không cảm thấy bị bỏ lại.",
+      "requirements": {
+        "length": 400,
+        "key_points": ["Thể hiện sự lo lắng", "Chúc mau khỏe", "Cập nhật tình hình lớp học"],
+        "guidelines": ["Có người nhận & người gửi", "Có lý do viết thư ở đầu thư", "Có lời chào mở và kết thư", "Sử dụng văn phong thân thiết (thể ngắn) hoặc lịch sự tùy mức độ"]
       }
-    ],
-
-    "opinion": [
-      {
-        "id": 7,
-        "topic": "movie_review",
-        "requirements": [
-          "cảnh ấn tượng",
-          "lý do",
-          "bài học"
-        ]
-      },
-      {
-        "id": 8,
-        "topic": "student_stress",
-        "requirements": [
-          "ví dụ cụ thể",
-          "nguyên nhân",
-          "giải pháp"
-        ]
-      },
-      {
-        "id": 9,
-        "topic": "living_alone_vs_family",
-        "requirements": [
-          "ưu điểm",
-          "nhược điểm",
-          "quan điểm cá nhân"
-        ]
+    },
+    {
+      "id": 3,
+      "task_type": "letter",
+      "topic_code": "advice_japanese_major",
+      "title": "後輩へのアドバイスの手紙",
+      "prompt_ja": "日本語専攻に入学を考えている高校生から手紙をもらいました。先輩として、返事の手紙を書きなさい。日本語を学ぶメリットと大変なこと（デメリット）を挙げ、あなた自身の経験を踏まえてアドバイスをすること。",
+      "prompt_vi": "Bạn nhận được thư từ một học sinh cấp 3 đang cân nhắc thi vào ngành ngôn ngữ Nhật. Với tư cách là tiền bối, hãy viết thư trả lời. Nêu ra những ưu điểm, khó khăn khi học tiếng Nhật và đưa ra lời khuyên dựa trên trải nghiệm của chính bạn.",
+      "requirements": {
+        "length": 400,
+        "key_points": ["Ưu điểm của ngành", "Khó khăn/Nhược điểm", "Trải nghiệm cá nhân & Lời khuyên"],
+        "guidelines": ["Có người nhận & người gửi", "Có lý do viết thư ở đầu thư", "Có lời chào mở và kết thư", "Sử dụng văn phong lịch sự (です・ます)"]
       }
-    ]
-  },
-
-  "rubric": {
+    },
+    {
+      "id": 4,
+      "task_type": "speech",
+      "topic_code": "influential_quote",
+      "title": "私に影響を与えた言葉",
+      "prompt_ja": "あなたの人生に大きな影響を与えた「言葉（名言や誰かの一言）」についてスピーチ原稿を書きなさい。その言葉にどこで（誰から）出会ったか、その言葉の持つ意味、そしてそれによって自分がどう変わったかを説明すること。",
+      "prompt_vi": "Hãy viết một bài phát biểu về một \"câu nói\" (danh ngôn hoặc lời của ai đó) đã có ảnh hưởng lớn đến cuộc đời bạn. Giải thích cơ duyên bạn biết đến câu nói đó, ý nghĩa của nó và bạn đã thay đổi như thế nào nhờ nó.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Cơ duyên biết đến câu nói", "Ý nghĩa của câu nói", "Sự thay đổi của bản thân"],
+        "guidelines": ["Văn phong nói (giống như đang thuyết trình trước đám đông)", "Có thông điệp rõ ràng", "Có kết luận chốt ý mạnh mẽ"]
+      }
+    },
+    {
+      "id": 5,
+      "task_type": "speech",
+      "topic_code": "failure_experience",
+      "title": "私の失敗経験とその教訓",
+      "prompt_ja": "これまでの人生で経験した「大きな失敗」についてスピーチ原稿を書きなさい。どのような失敗だったか、その時の感情、どうやって乗り越えたか、そしてその経験から何を学んだかを順に話すこと。",
+      "prompt_vi": "Hãy viết một bài phát biểu về \"một thất bại lớn\" mà bạn từng trải qua. Mô tả chi tiết thất bại đó, cảm xúc lúc bấy giờ, cách bạn đã vượt qua và bài học bạn rút ra được từ trải nghiệm đó.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Mô tả chi tiết thất bại", "Cảm xúc khi đó", "Cách vượt qua", "Bài học rút ra"],
+        "guidelines": ["Văn phong nói (giống như đang thuyết trình trước đám đông)", "Có thông điệp rõ ràng", "Có kết luận chốt ý mạnh mẽ"]
+      }
+    },
+    {
+      "id": 6,
+      "task_type": "speech",
+      "topic_code": "judging_by_appearance",
+      "title": "人は見かけで判断してはいけない",
+      "prompt_ja": "「人は見かけで判断してはいけない」というテーマでスピーチ原稿を書きなさい。あなた自身の経験（見た目で誤解した、または誤解された経験）を交えながら、なぜ見かけで判断することが問題なのか、自分の意見を述べること。",
+      "prompt_vi": "Hãy phát biểu về chủ đề \"Không nên đánh giá con người qua vẻ bề ngoài\". Kết hợp với trải nghiệm của bản thân (từng hiểu lầm hoặc bị hiểu lầm do ngoại hình), phân tích tại sao việc đánh giá qua vẻ bề ngoài lại là một vấn đề và nêu quan điểm của bạn.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Trải nghiệm cá nhân (bị hiểu lầm/hiểu lầm người khác)", "Phân tích lý do không nên đánh giá qua vẻ bề ngoài", "Ý kiến cá nhân"],
+        "guidelines": ["Văn phong nói (giống như đang thuyết trình trước đám đông)", "Có thông điệp rõ ràng", "Có kết luận chốt ý mạnh mẽ"]
+      }
+    },
+    {
+      "id": 7,
+      "task_type": "opinion",
+      "topic_code": "movie_review",
+      "title": "感動した映画（または本）",
+      "prompt_ja": "最近見て感動した、または考えさせられた映画（または本）について、あなたの意見を書きなさい。一番印象に残ったシーン、その理由、そしてその作品から学んだことを具体的に述べること。",
+      "prompt_vi": "Viết bài nêu cảm nhận về một bộ phim (hoặc cuốn sách) mà bạn mới xem gần đây khiến bạn cảm động hoặc phải suy ngẫm. Nêu rõ cảnh phim/đoạn trích ấn tượng nhất, lý do tại sao và bài học bạn rút ra từ tác phẩm đó.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Cảnh tượng/chi tiết ấn tượng nhất", "Lý do ấn tượng", "Bài học rút ra"],
+        "guidelines": ["Nêu ý kiến rõ ràng ở ngay đầu bài", "Cung cấp lý do và ví dụ cụ thể", "Có kết luận tóm tắt lại quan điểm"]
+      }
+    },
+    {
+      "id": 8,
+      "task_type": "opinion",
+      "topic_code": "student_stress",
+      "title": "現代の若者が抱えるストレス",
+      "prompt_ja": "現代の若者（学生）が抱えるストレスについて、あなたの意見を書きなさい。具体的にどのようなストレスがあるか例を挙げ、その原因を分析し、それを軽減するための解決策を提案すること。",
+      "prompt_vi": "Viết bài nêu ý kiến của bạn về tình trạng căng thẳng (stress) của giới trẻ/sinh viên hiện nay. Lấy ví dụ cụ thể về các loại stress họ gặp phải, phân tích nguyên nhân và đề xuất giải pháp để giải quyết hoặc giảm bớt tình trạng này.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Ví dụ cụ thể về stress", "Nguyên nhân gây ra stress", "Đề xuất giải pháp"],
+        "guidelines": ["Nêu ý kiến rõ ràng ở ngay đầu bài", "Cung cấp lý do và ví dụ cụ thể", "Có kết luận tóm tắt lại quan điểm"]
+      }
+    },
+    {
+      "id": 9,
+      "task_type": "opinion",
+      "topic_code": "living_alone_vs_family",
+      "title": "一人暮らしと実家暮らし",
+      "prompt_ja": "「大学生は一人暮らしをするべきか、それとも実家（家族）と暮らすべきか」について、あなたの意見を書きなさい。両方のメリットとデメリットを比較した上で、最終的な自分の立場と理由を明確にすること。",
+      "prompt_vi": "Viết bài nêu quan điểm của bạn về vấn đề: \"Sinh viên đại học nên ra ở riêng hay sống cùng gia đình?\". Hãy so sánh ưu và nhược điểm của cả hai hình thức, sau đó khẳng định rõ lập trường cá nhân của bạn kèm theo lý do.",
+      "requirements": {
+        "length": 500,
+        "key_points": ["Ưu điểm của sống riêng/sống cùng gia đình", "Nhược điểm của sống riêng/sống cùng gia đình", "Khẳng định quan điểm cá nhân"],
+        "guidelines": ["Nêu ý kiến rõ ràng ở ngay đầu bài", "Cung cấp lý do và ví dụ cụ thể", "Có kết luận tóm tắt lại quan điểm"]
+      }
+    }
+  ],
+  "rubrics": {
     "total_score": 100,
+    "grading_scale": "25 points per criterion",
     "criteria": [
       {
+        "id": "task_achievement",
         "name": "Hoàn thành nhiệm vụ giao tiếp",
         "max_score": 25,
         "items": [
-          "Đúng chủ đề",
-          "Đúng dạng bài",
-          "Văn phong phù hợp",
-          "Độ dài phù hợp"
+          "Đúng chủ đề yêu cầu",
+          "Đúng dạng bài (Thư, Thuyết trình, Ý kiến...)",
+          "Văn phong phù hợp với đối tượng",
+          "Đảm bảo độ dài (số chữ) yêu cầu"
         ]
       },
       {
+        "id": "coherence_cohesion",
         "name": "Tổ chức & Nội dung",
         "max_score": 25,
         "items": [
-          "Mở - Thân - Kết",
-          "Đủ ý",
-          "Logic",
-          "Liên kết"
+          "Cấu trúc bài rõ ràng (Mở - Thân - Kết)",
+          "Phát triển đủ các ý được yêu cầu",
+          "Lập luận logic, mạch lạc",
+          "Sử dụng từ nối (liên kết câu/đoạn) hợp lý"
         ]
       },
       {
+        "id": "lexical_resource",
         "name": "Từ vựng & Diễn đạt",
         "max_score": 25,
         "items": [
-          "Từ vựng phù hợp",
-          "Đa dạng",
-          "Diễn đạt tự nhiên"
+          "Sử dụng từ vựng phù hợp ngữ cảnh",
+          "Đa dạng hóa vốn từ",
+          "Diễn đạt tự nhiên giống người bản xứ"
         ]
       },
       {
-        "name": "Ngữ pháp & chính tả",
+        "id": "grammatical_accuracy",
+        "name": "Ngữ pháp & Chính tả",
         "max_score": 25,
         "items": [
-          "Ngữ pháp phù hợp",
-          "Đa dạng",
-          "Chính xác",
-          "Chính tả"
+          "Sử dụng ngữ pháp phù hợp cấp độ",
+          "Đa dạng cấu trúc câu",
+          "Độ chính xác ngữ pháp cao",
+          "Đúng chính tả (Hán tự, Hiragana, Katakana)"
         ]
       }
-    ]
-  },
-
-  "task_notes": {
-    "letter": [
-      "có người nhận & người gửi",
-      "có lý do viết",
-      "mở & kết thư",
-      "văn phong lịch sự"
-    ],
-    "speech": [
-      "giống đang nói",
-      "có thông điệp rõ",
-      "kết luận chốt ý"
-    ],
-    "opinion": [
-      "ý kiến rõ",
-      "có lý do + ví dụ",
-      "có kết luận"
     ]
   }
 }

@@ -26,7 +26,7 @@ def register():
         if len(password) < 6:
             return jsonify({"message": "Password too short, minimum 6 characters"}), 400
 
-        if role not in ["control", "variant", "teacher", "admin"]:
+        if role not in ["control", "variant", "teacher","student", "admin"]:
             return jsonify({"message": "Invalid role"}), 400
 
         existing_user = User.query.filter_by(username=username).first()

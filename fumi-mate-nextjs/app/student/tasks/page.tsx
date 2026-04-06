@@ -154,10 +154,10 @@ export default function StudentTasksPage() {
                           {task.dueDate ? formatDate(task.dueDate) : 'Không có'}
                         </span>
                       </div>
-                      <div>
+                      {/* <div>
                         <span className="font-semibold">Lượt nộp: </span>
                         <span>{task.attemptCount || 0} / 2</span>
-                      </div>
+                      </div> */}
                     </div>
 
                     <Link

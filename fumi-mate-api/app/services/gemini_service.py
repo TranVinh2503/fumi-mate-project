@@ -496,6 +496,7 @@ REQUIRED_POINTS:
         print(f"⚠️ Gemini API error: {e}")
         return None
 
+
 def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 'N3') -> Dict[str, Any]:
     """
     Grade student writing using Gemini + rubric from constants/writing_rubric.json
@@ -529,7 +530,7 @@ def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 
         notes = rubric_data.get('task_notes', {}).get(task_info.get('topic', ''), [])
         requirements = task_info.get('requirements', pre_post.get('requirement', {}).get('must_include', [])) if 'requirements' in task_info else []
         
-        # Build prompt: Bổ sung thêm detailed_analysis để Frontend hiển thị đẹp hơn
+        # Build prompt: Bổ sung thêm detailed_analysis và yêu cầu strict JSON
         prompt = f"""Grade this Japanese writing task:
 TASK ID {task_type_id}: {task_info.get('title', task_info.get('topic', 'Unknown'))}
 Difficulty level: {difficulty}
@@ -546,7 +547,7 @@ RUBRIC CRITERIA:
             prompt += f"{i}. {crit['name']}: 0-{crit['max_score']} pts ({items})\n"
         
         prompt += """
-You must output a raw, strictly valid JSON object. Do not include markdown tags like ```json.
+You must output a raw, strictly valid JSON object. Do not include markdown tags like \`\`\`json.
 Expected JSON schema:
 {
   "criteria_scores": {
@@ -568,22 +569,25 @@ Expected JSON schema:
   }
 }
 Be objective, specific to the student's content and the rubric requirements.
-IMPORTANT: All generated text values (feedback, strengths, improvements, issues, suggestions, action_plan) MUST BE WRITTEN IN VIETNAMESE.
+IMPORTANT: All generated text values (feedback, strengths, improvements, issues, suggestions, action_plan) MUST BE WRITTEN IN VIETNAMESE. Không thêm text ngoài json.
+Do NOT use literal newlines inside string values. Use "\\n" for line breaks if needed. Escape any double quotes inside strings using "\\\"".
 """
-
+        print("prompt",prompt)
+        
         # Gọi SDK Google GenAI MỚI
         API_KEY = os.getenv('GEMINI_API_KEY')
+        print("API_KEY",API_KEY)
         if not API_KEY:
             print("❌ Lỗi: Thiếu GEMINI_API_KEY trong file .env")
             return {"error": "GEMINI_API_KEY missing", "overall_score": 50}
         
-# 1. Khởi tạo Client
+        # 1. Khởi tạo Client
         genai.configure(api_key=API_KEY)
         model = genai.GenerativeModel(
             'gemini-2.5-flash', 
             generation_config={
                 'temperature': 0.2,
-                'max_output_tokens': 4000, # TĂNG LÊN 4000 ĐỂ KHÔNG BỊ CẮT CỤT
+                'max_output_tokens': 4000,
                 'response_mime_type': "application/json"
             }
         )
@@ -598,13 +602,12 @@ IMPORTANT: All generated text values (feedback, strengths, improvements, issues,
         print("-----------------------\n")
         
         # 3. Đề phòng AI vẫn nhét thẻ Markdown
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:-3].strip()
-        elif raw_text.startswith("```"):
-            raw_text = raw_text[3:-3].strip()
+        # Sử dụng re.sub an toàn hơn so với việc cắt index cứng [7:-3]
+        raw_text = re.sub(r'^\`\`\`(?:json)?\n?(.*?)\n?\`\`\`$', r'\1', raw_text, flags=re.DOTALL).strip()
             
         # 4. Parse JSON từ chuỗi đã dọn dẹp
-        result = json.loads(raw_text)
+        # THÊM `strict=False` Ở ĐÂY để bỏ qua lỗi Unterminated string khi có ký tự xuống dòng
+        result = json.loads(raw_text, strict=False)
         
         # Đồng bộ key `total_score` thành `overall_score` cho khớp Frontend
         result['overall_score'] = round(result.get('total_score', result.get('overall_score', 0)), 1)

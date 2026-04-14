@@ -10,7 +10,7 @@ import { API_ENDPOINTS } from '@/lib/apiConfig';
 // Test: Để 30 (30 giây)
 // Chạy thật: Để 45 * 60 (45 phút)
 // ==========================================
-const TEST_DURATION_SECONDS = 45 * 60; 
+const TEST_DURATION_SECONDS = 60 * 60; 
 
 type Question = {
   id: number;

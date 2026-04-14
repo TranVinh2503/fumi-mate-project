@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 
+// ==========================================
+// ⚙️ CẤU HÌNH THỜI GIAN LÀM BÀI (Tính bằng giây)
+// Test: Để 30 (30 giây)
+// Chạy thật: Để 45 * 60 (45 phút)
+// ==========================================
+const TEST_DURATION_SECONDS = 45 * 60; 
+
 type Question = {
   id: number;
   questionText: string;
@@ -41,15 +48,15 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
-  // TIMER STATES
+  // TIMER STATES - Đã sử dụng biến cấu hình
   const [hasStarted, setHasStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(TEST_DURATION_SECONDS); 
   const [timerActive, setTimerActive] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
-  // 1. Hook tải dữ liệu
+  // 1. Hook tải dữ liệu (Kết hợp khôi phục bản nháp từ LocalStorage nếu có)
   useEffect(() => {
     if (!token) {
       setMessage('Vui lòng đăng nhập để tiếp tục');
@@ -66,17 +73,26 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
           }
         });
 
-        if (!taskResponse.ok) {
-          throw new Error('Không thể tải bài tập');
-        }
+        if (!taskResponse.ok) throw new Error('Không thể tải bài tập');
 
         const taskData = await taskResponse.json();
         setTask(taskData.task);
 
-        if (taskData.task.submission) {
-          setSubmission(taskData.task.submission);
-          setContent(taskData.task.submission.content || '');
+        const serverSubmission = taskData.task.submission;
+        const serverContent = serverSubmission?.content || '';
+        const localDraft = localStorage.getItem(`test_draft_${taskId}`);
+
+        if (serverSubmission) {
+          setSubmission(serverSubmission);
         }
+
+        // Ưu tiên lấy nội dung dài hơn (bảo vệ sinh viên nếu server chưa kịp lưu bản mới nhất)
+        if (localDraft && localDraft.length > serverContent.length && serverSubmission?.status !== 'submitted') {
+          setContent(localDraft);
+        } else {
+          setContent(serverContent);
+        }
+
       } catch (error) {
         console.error('Error fetching task:', error);
         setMessage('Không thể tải dữ liệu bài tập');
@@ -88,32 +104,49 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     fetchData();
   }, [taskId, token]);
 
-  // 2. Hook đếm ngược thời gian
+  // 2a. Hook CHỈ làm nhiệm vụ đếm ngược (đã loại bỏ 'content' để tránh Time Drift)
   useEffect(() => {
     if (!timerActive || timeLeft <= 0) return;
+    
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setTimerActive(false);
-          setMessage('⏰ HẾT GIỜ! Tự động nộp bài.');
-          if (content.trim()) handleSubmit({preventDefault: () => {}} as any);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
+    
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerActive, timeLeft]);
+
+  // 2b. Hook kiểm tra hết giờ & Gọi lệnh nộp tự động
+  useEffect(() => {
+    if (timerActive && timeLeft === 0) {
+      setTimerActive(false); // Ngắt đếm giờ lập tức
+      setMessage('⏰ HẾT GIỜ! Tự động nộp bài.');
+      
+      if (content.trim()) {
+        handleSubmit(null, true); // Gọi nộp bài kèm cờ tự động
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, timerActive, content]);
+
+  // 2c. Hook Auto-save: Tự động lưu nháp vào LocalStorage mỗi 10 giây
+  useEffect(() => {
+    if (!hasStarted || !timerActive || !content) return;
+    const isSubmitted = submission?.status === 'submitted' || submission?.status === 'teacher_graded' || submission?.status === 'ai_graded';
+    if (isSubmitted) return;
+
+    const autoSaveInterval = setInterval(() => {
+      localStorage.setItem(`test_draft_${taskId}`, content);
+    }, 10000);
+
+    return () => clearInterval(autoSaveInterval);
+  }, [content, hasStarted, timerActive, submission, taskId]);
 
   // 3. Hook TỰ ĐỘNG BẮT ĐẦU HOẶC KHÔI PHỤC THỜI GIAN
   useEffect(() => {
-    // Chỉ chạy khi ở trình duyệt và đã load xong data
     if (typeof window === 'undefined' || loading) return;
 
-    // Nếu bài đã nộp thì không bật timer nữa
     const isAlreadySubmitted = submission?.status === 'submitted' || submission?.status === 'teacher_graded' || submission?.status === 'ai_graded';
+    
     if (isAlreadySubmitted) {
       setHasStarted(true);
       setTimerActive(false);
@@ -124,48 +157,62 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     const now = new Date();
 
     if (savedStart) {
-      // Đã từng vào trang này -> Khôi phục thời gian
       const parsed = new Date(savedStart);
       if (!isNaN(parsed.getTime())) {
         setStartTime(parsed);
         setHasStarted(true);
         const elapsed = Math.floor((now.getTime() - parsed.getTime()) / 1000);
-        const remaining = 45 * 60 - elapsed;
+        
+        // Sử dụng biến thay vì hardcode
+        const remaining = TEST_DURATION_SECONDS - elapsed;
         
         if (remaining > 0) {
           setTimeLeft(remaining);
           setTimerActive(true);
         } else {
-          // Trường hợp quá 45p mới vào lại trang
-          setTimeLeft(0);
-          setTimerActive(false);
+          // Kẹt thời gian (Hết giờ ở Local nhưng Server chưa nộp) -> Reset thời gian
+          if (!submission || submission.status === 'draft') {
+            console.warn("Phát hiện lỗi kẹt thời gian. Tiến hành reset bộ đếm.");
+            localStorage.removeItem(`test_start_${taskId}`);
+            localStorage.setItem(`test_start_${taskId}`, now.toISOString());
+            setStartTime(now);
+            setTimeLeft(TEST_DURATION_SECONDS); // Cập nhật bằng biến
+            setTimerActive(true);
+            setMessage('⚠️ Hệ thống phát hiện lỗi đồng bộ. Bài thi của bạn đã được làm mới thời gian.');
+          } else {
+            setTimeLeft(0);
+            setTimerActive(false);
+          }
         }
       }
     } else {
-      // Lần đầu tiên vào trang -> BẮT ĐẦU TÍNH GIỜ LUÔN
       localStorage.setItem(`test_start_${taskId}`, now.toISOString());
       setStartTime(now);
       setHasStarted(true);
-      setTimeLeft(45 * 60);
+      setTimeLeft(TEST_DURATION_SECONDS); // Cập nhật bằng biến
       setTimerActive(true);
     }
-  }, [taskId, loading, submission?.status]);
+  }, [taskId, loading, submission]);
 
   // Các hàm xử lý nộp bài
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!confirm('Bạn có chắc chắn muốn nộp bài? Sau khi nộp, bạn sẽ không thể chỉnh sửa nội dung được nữa.')) {
-      return;
+  const handleSubmit = async (e?: React.FormEvent | null, isAutoSubmit: boolean = false) => {
+    if (e) e.preventDefault();
+    if (submitting) return; // Chặn Double Submit
+  
+    // Bỏ qua confirm nếu hệ thống tự nộp
+    if (!isAutoSubmit) {
+      if (!confirm('Bạn có chắc chắn muốn nộp bài? Sau khi nộp, bạn sẽ không thể chỉnh sửa nội dung được nữa.')) {
+        return;
+      }
     }
-
+  
     if (!token) {
       setMessage('Vui lòng đăng nhập lại');
       return;
     }
-
+  
     setSubmitting(true);
-
+  
     try {
       const response = await fetch(API_ENDPOINTS.STUDENT_SUBMIT_TEST(Number(taskId)), {
         method: 'POST',
@@ -178,12 +225,17 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
           action: 'submit'
         })
       });
-
+  
       if (response.ok) {
         const data = await response.json();
         setMessage('✅ Bài làm của bạn đã được nộp thành công!');
         setSubmission(data.submission);
-        setTimerActive(false); // Dừng đếm giờ ngay lập tức khi nộp thành công
+        setTimerActive(false);
+        
+        // Dọn dẹp LocalStorage sau khi nộp thành công
+        localStorage.removeItem(`test_start_${taskId}`);
+        localStorage.removeItem(`test_draft_${taskId}`);
+
         setTimeout(() => router.push('/student/submissions'), 2000);
       } else {
         const error = await response.json();
@@ -198,6 +250,7 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
   };
 
   const handleSaveDraft = async () => {
+    if (submitting) return;
     if (!token) {
       setMessage('Vui lòng đăng nhập lại');
       return;
@@ -233,7 +286,6 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
     }
   };
 
-  // BLOCK CÁC LỆNH RETURN PHẢI NẰM SAU TẤT CẢ CÁC HOOKS
   if (loading) {
     return (
       <div className="container mx-auto section-padding text-center">
@@ -264,7 +316,6 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
         <div className="flex justify-between items-center mb-8 border-b pb-4">
           <h2 className="text-3xl font-title font-bold text-gray-800">Bài thi viết</h2>
           
-          {/* TIMER DISPLAY - */}
           {hasStarted && !isSubmitted && timeLeft > 0 && (
             <div className={`flex items-center gap-4 px-6 py-2 rounded-lg border-l-4 shadow-sm transition-all ${
               timeLeft < 5 * 60 
@@ -284,21 +335,19 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
             </div>
           )}
 
-          {/* HẾT GIỜ */}
           {hasStarted && !isSubmitted && timeLeft <= 0 && (
             <div className="flex items-center gap-4 px-6 py-2 rounded-lg border-l-4 border-gray-500 bg-gray-100 shadow-sm text-gray-700">
               <span className="text-2xl">⏰</span>
               <div>
                 <p className="text-sm font-bold">HẾT GIỜ</p>
-                <p className="text-xs">Bài thi đã được tự động nộp.</p>
+                <p className="text-xs">Đang xử lý nộp bài...</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Thông báo nhanh */}
         {message && (
-          <div className={`alert mb-6 p-4 rounded-lg flex justify-between items-center ${message.includes('✅') || message.includes('💾') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          <div className={`alert mb-6 p-4 rounded-lg flex justify-between items-center ${message.includes('✅') || message.includes('💾') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
             <span className="font-medium">{message}</span>
             <button
               onClick={() => setMessage('')}
@@ -309,7 +358,6 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
-        {/* Thông tin bài tập */}
         <div className="mb-8 p-5 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
           <h3 className="font-bold text-xl mb-3 text-blue-900">{task.title}</h3>
           <p className="text-gray-700 mb-5 leading-relaxed">{task.description}</p>
@@ -355,7 +403,7 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => handleSubmit(e, false)}>
           <div className="mb-6">
             <label htmlFor="content" className="block text-lg font-bold text-gray-800 mb-3">
               Bài làm của bạn
@@ -366,7 +414,6 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
               value={content}
               onChange={(e) => setContent(e.target.value)}
               
-              // 🛑 CÁC SỰ KIỆN CHẶN SAO CHÉP / DÁN TẠI ĐÂY 🛑
               onPaste={(e) => {
                 e.preventDefault();
                 setMessage('⚠️ Chống gian lận: Không được phép dán (paste) nội dung vào bài thi!');
@@ -375,11 +422,11 @@ export default function WritingTestPage({ params }: { params: { id: string } }) 
                 e.preventDefault();
                 setMessage('⚠️ Chống gian lận: Không được phép kéo thả nội dung!');
               }}
-              onCopy={(e) => e.preventDefault()} // Chặn copy nội dung trong bài
-              onCut={(e) => e.preventDefault()}  // Chặn cut nội dung trong bài
-              onContextMenu={(e) => e.preventDefault()} // Chặn click chuột phải
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
               autoComplete="off"
-              spellCheck="false" // Tùy chọn: Tắt check lỗi chính tả của trình duyệt để sinh viên tự nhớ từ vựng
+              spellCheck="false"
               
               className="w-full p-5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-inner text-gray-800 leading-relaxed resize-y"
               rows={15}

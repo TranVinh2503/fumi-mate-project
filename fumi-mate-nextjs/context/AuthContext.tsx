@@ -11,6 +11,7 @@ interface User {
 
 interface AuthContextType {
   user: User;
+  loading: boolean;
   login: (userData: Omit<User, 'isAuthenticated'>) => void;
   logout: () => void;
 }

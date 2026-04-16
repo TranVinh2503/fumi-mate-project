@@ -51,7 +51,7 @@ export default function TeacherSubmissionsPage() {
 
   const filteredSubmissions = submissions.filter(sub => {
     // Sửa 3: Sửa lại logic lọc status
-    if (filter === 'submitted') return sub.status === 1 && !isGraded(sub.teacher_score);
+    if (filter === 'submitted') return Number(sub.status) === 1 && !isGraded(sub.teacher_score);
     if (filter === 'graded') return isGraded(sub.teacher_score);
     return true; // cho 'all'
   }).filter(sub => 
@@ -97,7 +97,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          Chờ chấm ({submissions.filter(s => s.status === 1 && !isGraded(s.teacher_score)).length})
+          Chờ chấm ({submissions.filter(s => (s.status as any) === 1 && !isGraded(s.teacher_score)).length})
         </button>
         <button
           onClick={() => setFilter('graded')}
@@ -123,7 +123,7 @@ export default function TeacherSubmissionsPage() {
           >
             <option value="">Tất cả bài tập</option>
             {/* Sửa 4: Loại bỏ các task_title null/undefined trước khi tạo Set */}
-            {[...new Set(submissions.map(s => s.task_title).filter(Boolean))].map(title => (
+            {Array.from(new Set(submissions.map(s => s.task_title).filter(Boolean))).map(title => (
               <option key={title as string} value={title as string}>{title}</option>
             ))}
           </select>
@@ -158,12 +158,12 @@ export default function TeacherSubmissionsPage() {
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 font-semibold">
-                      {sub.student_name || sub.studentId}
+                    {sub.student_name || (sub as any).studentId || (sub as any).student_id}
                     </td>
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-semibold text-gray-900">{sub.task_title || 'N/A'}</p>
-                        <p className="text-sm text-gray-500">{sub.difficulty || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{(sub as any).difficulty || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 text-sm">
@@ -186,7 +186,7 @@ export default function TeacherSubmissionsPage() {
                     <td className="px-6 py-4">
                       {isGraded(sub.teacher_score) ? (
                         <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded">Graded</span>
-                      ) : sub.status === 1 ? (
+                      ) : (sub.status as any) === 1? (
                         <span className="badge badge-warning bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span>
                       ) : (
                         <span className="badge badge-secondary bg-gray-100 text-gray-800 px-2 py-1 rounded">Draft</span>

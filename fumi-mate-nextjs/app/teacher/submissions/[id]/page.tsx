@@ -80,7 +80,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
 
   // Hàm tính điểm (để dùng chung cho cả nút bấm và tự động nhảy)
   const handleAutoCalculateGrade = useCallback(() => {
-    const score = formData.overall_score;
+    const score = formData.overall_score ?? 0;
     let autoGrade = 'F';
 
     if (score >= 90) autoGrade = 'A';
@@ -398,7 +398,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
                   {tags.length > 0 ? (
                     tags.map((tag, i) => (
                       <div key={i} className="flex items-center gap-2 bg-white text-blue-700 px-3 py-1.5 rounded-full text-sm font-medium border border-blue-200 shadow-sm">
-                        <span>{tag}</span>
+                        <span>{typeof tag === 'object' && tag !== null ? (tag as any).title : tag}</span>
                         {!isGraded && (
                           <button
                             type="button"
@@ -432,7 +432,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
                   type="range"
                   min="0"
                   max="20"
-                  value={formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}
+                  value={(formData.detailed_analysis as any)?.[area]?.score || 0}
                   onChange={(e) => {
                     const newAnalysis = { ...formData.detailed_analysis! };
                     newAnalysis[area as keyof typeof newAnalysis] = { ...newAnalysis[area as keyof typeof newAnalysis], score: parseInt(e.target.value) };
@@ -444,7 +444,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
                 <div className="flex justify-between text-xs mt-1">
                   <span>0</span>
                   <span className={isGraded ? 'text-gray-500 font-semibold' : 'text-green-600 font-semibold'}>
-                    {formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}
+                  {(formData.detailed_analysis as any)?.[area]?.score || 0}
                   </span>
                   <span>20</span>
                 </div>

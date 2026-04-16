@@ -101,7 +101,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.overall_score === 0 || !formData.feedback_text.trim()) {
+    if (formData.overall_score === 0 || !formData.feedback_text?.trim()) {
       setMessage('Vui lòng điền điểm số và nhận xét');
       return;
     }
@@ -323,7 +323,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
                   type="range"
                   min="0"
                   max="20"
-                  value={formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}
+                  value={(formData.detailed_analysis as any)?.[area]?.score || 0}
                   onChange={(e) => {
                     const newAnalysis = { ...formData.detailed_analysis! };
                     newAnalysis[area as keyof typeof newAnalysis] = { ...newAnalysis[area as keyof typeof newAnalysis], score: parseInt(e.target.value) };
@@ -333,7 +333,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
                 />
                 <div className="flex justify-between text-xs mt-1">
                   <span>0</span>
-                  <span>{formData.detailed_analysis![area as keyof typeof formData.detailed_analysis]?.score || 0}</span>
+                  <span>{(formData.detailed_analysis as any)?.[area]?.score || 0}</span>
                   <span>20</span>
                 </div>
               </div>

@@ -2,8 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import json
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import time
 from datetime import datetime
 import json
 from app.models.task import Task, TaskQuestion
@@ -15,6 +16,7 @@ from app.utils.permissions import role_required
 from app.services.gemini_service import grade_writing_submission
 from werkzeug.utils import secure_filename
 import os
+
 
 teacher_bp = Blueprint('teacher', __name__)
 
@@ -400,28 +402,24 @@ def upload_word_correction(submission_id):
             return jsonify({'error': 'File too large (max 5MB)'}), 400
         
         # Create uploads dir
-        upload_dir = os.path.join('uploads', 'submissions')
-        os.makedirs(upload_dir, exist_ok=True)
+        # Save to public folder
+        public_dir = 'fumi-mate-nextjs/public/uploads/submissions'
+        os.makedirs(public_dir, exist_ok=True)
         
         # Unique filename
-        base_name = f"{submission_id}_{student.username.replace(' ', '_')}_corrected"
-        filepath = os.path.join(upload_dir, f"{base_name}.docx")
+        base_name = f"{submission_id}_{student.username.replace(' ', '_')}_corrected.docx"
+        public_filepath = os.path.join(public_dir, base_name)
+        file.save(public_filepath)
         
-        file.save(filepath)
-        
-        # Update DB
-        sub.word_file_path = filepath
+        # Update DB with relative path
+        sub.word_file_path = f"/uploads/submissions/{base_name}"
         sub.updated_at = datetime.utcnow()
         db.session.commit()
         
-        # Public URL
-        word_file_url = f"/uploads/submissions/{base_name}.docx"
-        
         return jsonify({
             'success': True,
-            'message': 'Word file uploaded successfully',
-            'file_path': filepath,
-            'download_url': word_file_url
+            'message': 'Word file uploaded to public folder',
+            'public_path': sub.word_file_path
         }), 200
         
     except Exception as e:
@@ -443,40 +441,17 @@ CRITERIA = [
 @jwt_required()
 @role_required('teacher')
 def grade_submission(submission_id):
-    """
-    Grade a submission with full rubric structure
-    """
     try:
         user_id = get_current_user_id()
-        data = request.get_json()
         
-        if not data:
-            return jsonify({'error': 'Missing JSON data'}), 400
+        # 1. Lấy dữ liệu văn bản từ FormData (key 'data')
+        json_data = request.form.get('data')
+        if not json_data:
+            return jsonify({'error': 'Missing grading data'}), 400
+            
+        data = json.loads(json_data)
         
-        # Required fields
-        required = ['overall_score', 'feedback_text', 'criteria_scores']
-        for field in required:
-            if field not in data:
-                return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        overall_score = data['overall_score']
-        if not isinstance(overall_score, (int, float)) or overall_score < 0 or overall_score > 100:
-            return jsonify({'error': 'overall_score must be 0-100'}), 400
-        
-        # Validate 7 criteria scores
-        criteria = data.get('criteria_scores', {})
-        for crit in CRITERIA:
-            i = crit['id']
-            if i not in criteria:
-                return jsonify({'error': f'Missing criteria_scores.{i}'}), 400
-            score = criteria[i]
-            if not isinstance(score, (int, float)) or score < 0 or score > crit['max']:
-                return jsonify({'error': f'criteria_scores.{i} must be 0-{crit["max"]}'}), 400
-
-        # Save teacher grade with full structure
-        full_feedback = data
-        full_feedback['grading_method'] = 'teacher_manual'
-        
+        # 2. Tìm bài nộp và kiểm tra quyền
         sub = Submission.query.get(submission_id)
         if not sub:
             return jsonify({'error': 'Submission not found'}), 404
@@ -484,25 +459,45 @@ def grade_submission(submission_id):
         task = Task.query.get(sub.task_id)
         if not task or task.created_by != int(user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
+
+        # 3. XỬ LÝ LƯU FILE VÀO THƯ MỤC STATIC (PUBLIC)
+        if 'file' in request.files:
+            file = request.files['file']
+            if file and file.filename != '':
+                # Định nghĩa đường dẫn vật lý trên server: app/static/graded/
+                upload_path = os.path.join(current_app.root_path, 'static', 'graded')
+                
+                # Tạo thư mục nếu chưa tồn tại
+                if not os.path.exists(upload_path):
+                    os.makedirs(upload_path)
+                
+                # Tạo tên file an toàn để tránh trùng lặp và lỗi font
+                filename = secure_filename(f"graded_{submission_id}_{int(time.time())}_{file.filename}")
+                file.save(os.path.join(upload_path, filename))
+                
+                # LƯU ĐƯỜNG DẪN TƯƠNG ĐỐI VÀO THUỘC TÍNH word_file_path CỦA MODEL
+                # Kết quả lưu vào DB: /static/graded/graded_254_1714800000_abc.docx
+                sub.word_file_path = f"/static/graded/{filename}"
+
+        # 4. CẬP NHẬT THÔNG TIN CHẤM ĐIỂM
+        # Lưu ý: Lúc này data không cần chứa word_file_path nữa vì đã lưu riêng
+        data['grading_method'] = 'teacher_manual'
         
-        sub.teacher_score = float(overall_score)
-        sub.teacher_feedback = json.dumps(full_feedback)
+        sub.teacher_score = float(data.get('overall_score', 0))
+        sub.teacher_feedback = json.dumps(data) # Chỉ chứa điểm 7 tiêu chí và feedback_text
         sub.status = 'teacher_graded'
         sub.updated_at = datetime.utcnow()
+        print(sub)
         
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Graded with 7-criteria rubric',
-            'teacher_score': sub.teacher_score
+            'message': 'Đã chấm điểm và lưu đường dẫn file thành công',
         }), 200
         
-    except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON'}), 400
     except Exception as e:
         db.session.rollback()
         import traceback
         print(f"Teacher grading error: {traceback.format_exc()}")
-        return jsonify({'error': 'Server error'}), 500
-
+        return jsonify({'error': f'Server error: {str(e)}'}), 500

@@ -145,21 +145,13 @@ def get_submissions():
 @student_bp.route('/submissions/<int:submission_id>', methods=['GET'])
 @jwt_required()
 def get_submission_detail(submission_id):
-    """Get detailed submission with AI feedback"""
+    # ... (giữ nguyên phần kiểm tra user và submission) ...
     user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
-    if not user or user.role != 'student':
-        return jsonify({'error': 'Unauthorized. Student access required.'}), 403
-
     submission = Submission.query.get(submission_id)
-    if not submission:
-        return jsonify({'error': 'Submission not found'}), 404
+    if not submission or submission.student_id != int(user_id):
+        return jsonify({'error': 'Unauthorized or not found'}), 404
 
-    # Ensure student owns this submission
-    if submission.student_id != int(user_id):
-        return jsonify({'error': 'Unauthorized. You can only view your own submissions.'}), 403
-
-    # Parse AI feedback JSON
+    # Parse AI feedback
     ai_feedback = {}
     if submission.ai_feedback:
         try:
@@ -167,7 +159,16 @@ def get_submission_detail(submission_id):
         except:
             ai_feedback = {'feedback_text': submission.ai_feedback}
 
+    # Parse Teacher feedback (Mới)
+    teacher_feedback_parsed = {}
+    if submission.teacher_feedback:
+        try:
+            teacher_feedback_parsed = json.loads(submission.teacher_feedback)
+        except:
+            teacher_feedback_parsed = {'feedback_text': submission.teacher_feedback}
+
     task_obj = Task.query.get(submission.task_id) if submission.task_id else None
+    
     submission_data = {
         'id': submission.id,
         'experimental_group': submission.student.experimental_group,
@@ -181,7 +182,8 @@ def get_submission_detail(submission_id):
         'aiScore': submission.ai_score,
         'teacherScore': submission.teacher_score,
         'aiFeedback': ai_feedback,
-        'teacherFeedback': submission.teacher_feedback,
+        'teacherFeedback': teacher_feedback_parsed, # Đã parse thành object
+        'word_file_path': submission.word_file_path, # THÊM TRƯỜNG NÀY
         'createdAt': submission.created_at.isoformat() if submission.created_at else None,
         'updatedAt': submission.updated_at.isoformat() if submission.updated_at else None
     }

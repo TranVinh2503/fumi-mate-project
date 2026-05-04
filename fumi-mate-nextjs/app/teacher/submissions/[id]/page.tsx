@@ -62,6 +62,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
   
   // Khởi tạo State với giá trị mặc định sạch
   const [formData, setFormData] = useState<TeacherFeedbackData>({
@@ -75,44 +76,44 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   const fetchSubmission = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
-
+  
     try {
-        const response = await fetch(`${API_ENDPOINTS.TEACHER_SUBMISSIONS}/${submissionId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch');
-        const data = await response.json();
-        
-        const sub = data.submission;
-        setSubmission(sub);
-
-        if (sub.teacher_feedback) {
-            // Xử lý an toàn cho cả trường hợp là string hoặc object
-            const parsed = typeof sub.teacher_feedback === 'string' 
-                ? JSON.parse(sub.teacher_feedback) 
-                : sub.teacher_feedback;
-
-            if (parsed) {
-                const normalizedScores: Record<string, number> = {};
-                ['1', '2', '3', '4', '5', '6', '7'].forEach(id => {
-                    normalizedScores[id] = Number(parsed.criteria_scores?.[id]) || 0;
-                });
-
-                setFormData({
-                    overall_score: Number(parsed.overall_score) || 0,
-                    grade: parsed.grade || '',
-                    feedback_text: parsed.feedback_text || '',
-                    criteria_scores: normalizedScores,
-                    grading_method: parsed.grading_method || 'teacher_manual'
-                });
-            }
+      const response = await fetch(`${API_ENDPOINTS.TEACHER_SUBMISSIONS}/${submissionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      
+      const sub = data.submission;
+      setSubmission(sub); // Lưu submission vào state (đã bao gồm word_file_path)
+  
+      if (sub.teacher_feedback) {
+        const parsed = typeof sub.teacher_feedback === 'string' 
+          ? JSON.parse(sub.teacher_feedback) 
+          : sub.teacher_feedback;
+  
+        if (parsed) {
+          const normalizedScores: Record<string, number> = {};
+          ['1', '2', '3', '4', '5', '6', '7'].forEach(id => {
+            normalizedScores[id] = Number(parsed.criteria_scores?.[id]) || 0;
+          });
+  
+          setFormData({
+            overall_score: Number(parsed.overall_score) || 0,
+            grade: parsed.grade || '',
+            feedback_text: parsed.feedback_text || '',
+            criteria_scores: normalizedScores,
+            grading_method: parsed.grading_method || 'teacher_manual'
+            // Lưu ý: word_file_path nằm trực tiếp ở sub, không nằm trong formData
+          });
         }
+      }
     } catch (err) {
-        console.error("Fetch error:", err);
+      console.error("Fetch error:", err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-}, [submissionId]);
+  }, [submissionId]);
 
   useEffect(() => { fetchSubmission(); }, [fetchSubmission]);
 
@@ -195,28 +196,50 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   return (
     <section className="container mx-auto p-8 max-w-6xl space-y-8">
       {/* 1. Header & Tools - Giữ nguyên */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      {/* 1. Header & Tools */}
+    <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
             {isGraded ? 'Xem lại kết quả chấm' : 'Chấm bài viết'}
           </h1>
           <p className="text-sm text-slate-500">Học sinh: {submission.student_name}</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={exportToWord} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 border border-blue-100 text-sm">
-            📥 Xuất Word
-          </button>
-          {!isGraded && (
-            <label className="px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 cursor-pointer border border-green-100 text-sm">
-              📤 {selectedFile ? selectedFile.name : 'Đính kèm bản sửa'}
-              <input type="file" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-            </label>
-          )}
-          <Link href="/teacher/submissions" className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm">
-            Quay lại
-          </Link>
-        </div>
+        
+        {/* HIỂN THỊ FILE ĐÃ CHẤM NẾU CÓ */}
+        {isGraded && submission.word_file_path && (
+          <a 
+            href={`${API_BASE_URL}${submission.word_file_path}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold border border-emerald-100 hover:bg-emerald-100 transition-all text-sm animate-in fade-in slide-in-from-left-4"
+          >
+            <span className="text-lg">📄</span> Tải bản sửa (.docx)
+          </a>
+        )}
       </div>
+
+      <div className="flex gap-3">
+        <button onClick={exportToWord} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 border border-blue-100 text-sm">
+          📥 Xuất Word bài làm
+        </button>
+        
+        {!isGraded ? (
+          <label className="px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 cursor-pointer border border-green-100 text-sm">
+            📤 {selectedFile ? selectedFile.name : 'Đính kèm bản sửa'}
+            <input type="file" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+          </label>
+        ) : (
+          <div className="px-4 py-2 bg-slate-50 text-slate-400 rounded-xl font-bold border border-slate-100 text-sm italic">
+            Đã khóa chỉnh sửa
+          </div>
+        )}
+        
+        <Link href="/teacher/submissions" className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm">
+          Quay lại
+        </Link>
+      </div>
+    </div>
   
       {/* 2. PHẦN TRÊN: Nội dung bài làm chiếm trọn chiều ngang */}
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">

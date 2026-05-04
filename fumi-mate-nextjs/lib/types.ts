@@ -91,6 +91,8 @@ export interface Submission {
   updatedAt?: string;
   created_at?: string;
   updated_at?: string;
+  word_file_path?: string;
+  word_file_url?: string;
 
 }
 

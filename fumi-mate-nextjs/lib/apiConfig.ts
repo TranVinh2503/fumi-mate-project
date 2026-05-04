@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   STUDENT_SUBMIT_TEST: (taskId: number) => `${API_BASE_URL}/api/student/submit-test/${taskId}`,
   STUDENT_SUBMISSIONS: `${API_BASE_URL}/api/student/submissions`,
   TEACHER_GRADE_SUBMISSION: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/grade`,
+  TEACHER_AI_GRADE_SUBMISSION: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/ai-grade`,
   
 // Teacher
   TEACHER_TASKS: `${API_BASE_URL}/api/teacher/tasks`,
@@ -33,7 +34,8 @@ export const API_ENDPOINTS = {
   ADMIN_QUESTION_CREATE: `${API_BASE_URL}/api/admin/question-bank`,
 
   //change
-  CHANGE_PASSWORD: `${API_BASE_URL}/api/auth/change-password`
+  CHANGE_PASSWORD: `${API_BASE_URL}/api/auth/change-password`,
+  TEACHER_UPLOAD_WORD: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/upload-word`,
 };
 
 export default API_BASE_URL;

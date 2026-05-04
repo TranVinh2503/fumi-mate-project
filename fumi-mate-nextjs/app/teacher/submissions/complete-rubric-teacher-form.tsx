@@ -57,7 +57,16 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
       // Pre-fill from teacher_feedback if exists
       if (data.submission.teacher_feedback) {
         const parsed = parseJSON<TeacherFeedbackData>(data.submission.teacher_feedback, formData);
-        setFormData(parsed);
+        
+        // Đảm bảo các mảng không bị undefined để không lỗi khi .map()
+        setFormData({
+          ...parsed,
+          criteria_scores: parsed.criteria_scores || { '1': 0, '2': 0, '3': 0, '4': 0 },
+          strengths: parsed.strengths || [],
+          improvements: parsed.improvements || [],
+          action_plan: parsed.action_plan || [],
+          detailed_analysis: parsed.detailed_analysis || formData.detailed_analysis
+        });
       }
       
       // Parse AI for reference

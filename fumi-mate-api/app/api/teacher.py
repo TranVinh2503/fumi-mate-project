@@ -11,8 +11,10 @@ from app.models.question_bank import QuestionBank
 from app.models.user import User
 from app.models.submission import Submission
 from app.extensions import db
-from ..ai_services import generate_ai_feedback
 from app.utils.permissions import role_required
+from app.services.gemini_service import grade_writing_submission
+from werkzeug.utils import secure_filename
+import os
 
 teacher_bp = Blueprint('teacher', __name__)
 
@@ -285,7 +287,7 @@ def get_teacher_submissions():
                 'content': sub.content[:100] + '...' if sub.content and len(sub.content) > 100 else sub.content,
                 'ai_score': sub.ai_score,
                 'teacher_score': sub.teacher_score,
-'status': sub.status,
+                'status': sub.status,
                 'attemptCount': sub.attempt_count,
                 'submission_time': sub.created_at.isoformat() if sub.created_at else None,
             })
@@ -343,6 +345,7 @@ def get_submission_detail(submission_id):
             'status': sub.status,
             'created_at': sub.created_at.isoformat() if sub.created_at else None,
             'updated_at': sub.updated_at.isoformat() if sub.updated_at else None,
+            'word_file_path': sub.word_file_path,
         }
         
         return jsonify({
@@ -354,13 +357,94 @@ def get_submission_detail(submission_id):
         print(f"Error fetching submission detail: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@teacher_bp.route('/submissions/<int:submission_id>/upload-word', methods=['POST'])
+@jwt_required()
+@role_required('teacher')
+def upload_word_correction(submission_id):
+    """
+    Upload corrected Word file for submission
+    """
+    try:
+        user_id = get_current_user_id()
+        
+        if 'corrected_file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['corrected_file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not file.filename.lower().endswith('.docx'):
+            return jsonify({'error': 'Only .docx files allowed'}), 400
+        
+        # Security: secure filename
+        filename = secure_filename(file.filename)
+        
+        sub = Submission.query.get(submission_id)
+        if not sub:
+            return jsonify({'error': 'Submission not found'}), 404
+        
+        task = Task.query.get(sub.task_id)
+        if not task or task.created_by != int(user_id):
+            return jsonify({'error': 'Not authorized for this submission'}), 403
+        
+        student = User.query.get(sub.student_id)
+        if not student:
+            return jsonify({'error': 'Student not found'}), 404
+        
+        # File size limit 5MB
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > 5 * 1024 * 1024:
+            return jsonify({'error': 'File too large (max 5MB)'}), 400
+        
+        # Create uploads dir
+        upload_dir = os.path.join('uploads', 'submissions')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Unique filename
+        base_name = f"{submission_id}_{student.username.replace(' ', '_')}_corrected"
+        filepath = os.path.join(upload_dir, f"{base_name}.docx")
+        
+        file.save(filepath)
+        
+        # Update DB
+        sub.word_file_path = filepath
+        sub.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Public URL
+        word_file_url = f"/uploads/submissions/{base_name}.docx"
+        
+        return jsonify({
+            'success': True,
+            'message': 'Word file uploaded successfully',
+            'file_path': filepath,
+            'download_url': word_file_url
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Upload error: {e}")
+        return jsonify({'error': 'Server error during upload'}), 500
+
+# Rubric criteria for validation (7 criteria)
+CRITERIA = [
+  {'id': '1', 'max': 15},
+  {'id': '2', 'max': 15},
+  {'id': '3', 'max': 15},
+  {'id': '4', 'max': 20},
+  {'id': '5', 'max': 15},
+  {'id': '6', 'max': 10},
+  {'id': '7', 'max': 10},
+]
 @teacher_bp.route('/submissions/<int:submission_id>/grade', methods=['PATCH'])
 @jwt_required()
 @role_required('teacher')
 def grade_submission(submission_id):
     """
-    Grade a submission with full AI-mirror structure
-    Body: AI FeedbackData JSON (criteria_scores, overall_score, feedback_text, strengths[], etc.)
+    Grade a submission with full rubric structure
     """
     try:
         user_id = get_current_user_id()
@@ -369,7 +453,7 @@ def grade_submission(submission_id):
         if not data:
             return jsonify({'error': 'Missing JSON data'}), 400
         
-        # Required AI-mirror fields
+        # Required fields
         required = ['overall_score', 'feedback_text', 'criteria_scores']
         for field in required:
             if field not in data:
@@ -379,14 +463,18 @@ def grade_submission(submission_id):
         if not isinstance(overall_score, (int, float)) or overall_score < 0 or overall_score > 100:
             return jsonify({'error': 'overall_score must be 0-100'}), 400
         
-        # Validate criteria_scores
+        # Validate 7 criteria scores
         criteria = data.get('criteria_scores', {})
-        for i in ['1', '2', '3', '4']:
-            if i not in criteria or criteria[i] < 0 or criteria[i] > 25:
-                return jsonify({'error': f'criteria_scores.{i} must be 0-25'}), 400
-        
-        # Parse teacher_feedback JSON (full AI structure)
-        full_feedback = data  # Already JSON
+        for crit in CRITERIA:
+            i = crit['id']
+            if i not in criteria:
+                return jsonify({'error': f'Missing criteria_scores.{i}'}), 400
+            score = criteria[i]
+            if not isinstance(score, (int, float)) or score < 0 or score > crit['max']:
+                return jsonify({'error': f'criteria_scores.{i} must be 0-{crit["max"]}'}), 400
+
+        # Save teacher grade with full structure
+        full_feedback = data
         full_feedback['grading_method'] = 'teacher_manual'
         
         sub = Submission.query.get(submission_id)
@@ -397,7 +485,6 @@ def grade_submission(submission_id):
         if not task or task.created_by != int(user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
         
-        # Save mirror structure
         sub.teacher_score = float(overall_score)
         sub.teacher_feedback = json.dumps(full_feedback)
         sub.status = 'teacher_graded'
@@ -407,15 +494,15 @@ def grade_submission(submission_id):
         
         return jsonify({
             'success': True,
-            'message': 'Graded with full rubric structure',
-            'teacher_score': sub.teacher_score,
-            'grading_method': 'teacher_manual'
+            'message': 'Graded with 7-criteria rubric',
+            'teacher_score': sub.teacher_score
         }), 200
         
     except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON in teacher_feedback'}), 400
+        return jsonify({'error': 'Invalid JSON'}), 400
     except Exception as e:
         db.session.rollback()
         import traceback
         print(f"Teacher grading error: {traceback.format_exc()}")
         return jsonify({'error': 'Server error'}), 500
+

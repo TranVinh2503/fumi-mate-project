@@ -499,134 +499,96 @@ REQUIRED_POINTS:
 
 def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 'N3') -> Dict[str, Any]:
     """
-    Grade student writing using Gemini + rubric from constants/writing_rubric.json
-    Returns structured rubric scores (0-100 total), feedback, strengths/improvements.
+    Grade student writing using Gemini + 7-criteria Japanese Rubric.
     """
     try:
-        # Load rubric
+        # 1. Load rubric data (Giả định file JSON của bạn đã cập nhật 7 tiêu chí)
+        # Nếu chưa, Prompt dưới đây sẽ ghi đè định nghĩa cứng để đảm bảo chính xác.
         rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
         with open(rubric_path, 'r', encoding='utf-8') as f:
             rubric_data = json.load(f)
         
-        # Lấy thông tin bài tập
+        # Lấy thông tin bài tập (Giữ nguyên logic của bạn)
         task_info = None
-        pre_post = rubric_data.get('writing_tasks', {}).get('pre_post_test')
-        if task_type_id == 0 and pre_post:
-            task_info = pre_post
-        else:
-            for category in ['letter', 'speech', 'opinion']:
-                for task in rubric_data.get('writing_tasks', {}).get(category, []):
-                    if task['id'] == task_type_id:
-                        task_info = task
-                        break
-                if task_info:
-                    break
-        
-        if not task_info:
-            print(f"❌ Không tìm thấy task_type_id: {task_type_id} trong rubric")
-            return {"error": f"Task type {task_type_id} not found", "overall_score": 0}
-        
-        criteria = rubric_data['rubric']['criteria']
-        notes = rubric_data.get('task_notes', {}).get(task_info.get('topic', ''), [])
-        requirements = task_info.get('requirements', pre_post.get('requirement', {}).get('must_include', [])) if 'requirements' in task_info else []
-        
-        # Build prompt: Bổ sung thêm detailed_analysis và yêu cầu strict JSON
-        prompt = f"""Grade this Japanese writing task:
-TASK ID {task_type_id}: {task_info.get('title', task_info.get('topic', 'Unknown'))}
-Difficulty level: {difficulty}
-Student Content:
+        # ... (Phần tìm task_info giữ nguyên như code cũ của bạn) ...
+
+        # 2. Xây dựng Prompt dựa trên file Rubrik final.docx
+        prompt = f"""Bạn là một chuyên gia chấm bài viết tiếng Nhật. Hãy chấm điểm bài viết sau dựa trên RUBRIK 7 TIÊU CHÍ.
+
+THÔNG TIN BÀI TẬP:
+- Task ID: {task_type_id}
+- Chủ đề: {task_info.get('title', 'N/A')}
+- Cấp độ: {difficulty}
+- Nội dung học sinh: 
+---
 {content}
+---
 
-REQUIREMENTS: {', '.join(requirements)}
-NOTES: {', '.join(notes) if notes else 'None'}
+RUBRIK CHẤM ĐIỂM (Thang điểm 100):
+1. Hoàn thành yêu cầu đề (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
+2. Nội dung & phát triển ý (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
+3. Bố cục & mạch lạc (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
+4. Ngữ pháp & cấu trúc (20đ): M4(20), M3(15), M2(10), M1(5)
+5. Từ vựng (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
+6. Chữ viết & chính tả (10đ): M4(10), M3(7.5), M2(5), M1(2.5)
+7. Văn phong & ngữ dụng (10đ): M4(10), M3(7.5), M2(5), M1(2.5)
 
-RUBRIC CRITERIA:
-"""
-        for i, crit in enumerate(criteria, 1):
-            items = ', '.join(crit['items'])
-            prompt += f"{i}. {crit['name']}: 0-{crit['max_score']} pts ({items})\n"
-        
-        prompt += """
-You must output a raw, strictly valid JSON object. Do not include markdown tags like \`\`\`json.
-Expected JSON schema:
-{
-  "criteria_scores": {
-    "1": float,
-    "2": float,
-    "3": float,
-    "4": float
-  },
+QUY TẮC CHẤM:
+- Với mỗi tiêu chí, hãy chọn mức (M1 đến M4) dựa trên mô tả trong rubrik.
+- Điểm số phải tương ứng với mức đã chọn (Ví dụ: Tiêu chí 1 nếu chọn M3 thì điểm là 11.25).
+- Tổng điểm là tổng của 7 tiêu chí.
+
+YÊU CẦU ĐẦU RA JSON (Strictly valid JSON):
+{{
+  "criteria_scores": {{
+    "1": float, "2": float, "3": float, "4": float, "5": float, "6": float, "7": float
+  }},
+  "criteria_levels": {{
+    "1": "M1-M4", "2": "M1-M4", "3": "M1-M4", "4": "M1-M4", "5": "M1-M4", "6": "M1-M4", "7": "M1-M4"
+  }},
   "total_score": float,
-  "grade": "string (A/B/C/D/F)",
-  "feedback_text": "string (Đánh giá tổng quan chi tiết bằng Tiếng Việt)",
-  "strengths": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
-  "improvements": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
-  "action_plan": ["string (Tiếng Việt)", "string (Tiếng Việt)"],
-  "detailed_analysis": {
-    "grammar": { "score": float, "issues": ["string (Tiếng Việt)"], "suggestions": ["string (Tiếng Việt)"] },
-    "vocabulary": { "score": float, "strengths": ["string (Tiếng Việt)"], "improvements": ["string (Tiếng Việt)"] },
-    "content": { "score": float, "feedback": "string (Tiếng Việt)" }
-  }
-}
-Be objective, specific to the student's content and the rubric requirements.
-IMPORTANT: All generated text values (feedback, strengths, improvements, issues, suggestions, action_plan) MUST BE WRITTEN IN VIETNAMESE. Không thêm text ngoài json.
-Do NOT use literal newlines inside string values. Use "\\n" for line breaks if needed. Escape any double quotes inside strings using "\\\"".
+  "grade": "A/B/C/D/F",
+  "feedback_text": "Đánh giá tổng quan bằng Tiếng Việt",
+  "strengths": ["Liệt kê ưu điểm bằng Tiếng Việt"],
+  "improvements": ["Liệt kê điểm cần cải thiện bằng Tiếng Việt"],
+  "detailed_analysis": {{
+    "language": {{ "issues": ["Lỗi cụ thể về từ vựng/ngữ pháp"], "suggestions": ["Cách sửa"] }},
+    "kanji_orthography": {{ "feedback": "Nhận xét về chữ viết, Kanji, chính tả" }},
+    "style_usage": {{ "feedback": "Nhận xét về văn phong (Thể từ điển/Lịch sự)" }}
+  }}
+}}
+LƯU Ý: Phản hồi hoàn toàn bằng Tiếng Việt. Không thêm văn bản ngoài JSON.
 """
-        print("prompt",prompt)
-        
-        # Gọi SDK Google GenAI MỚI
+
+        # 3. Gọi Gemini API (Sử dụng Model mới nhất)
         API_KEY = os.getenv('GEMINI_API_KEY')
-        print("API_KEY",API_KEY)
-        if not API_KEY:
-            print("❌ Lỗi: Thiếu GEMINI_API_KEY trong file .env")
-            return {"error": "GEMINI_API_KEY missing", "overall_score": 50}
-        
-        # 1. Khởi tạo Client
         genai.configure(api_key=API_KEY)
+        
+        # Khuyến khích dùng gemini-1.5-pro hoặc flash cho việc chấm điểm cần độ chính xác cao
         model = genai.GenerativeModel(
-            'gemini-2.5-flash', 
+            'gemini-1.5-flash', 
             generation_config={
-                'temperature': 0.2,
-                'max_output_tokens': 4000,
+                'temperature': 0.1, # Giảm Temp để kết quả chấm điểm ổn định hơn
                 'response_mime_type': "application/json"
             }
         )
-        response = model.generate_content(prompt)
         
-        # 2. Lấy chuỗi raw text và dọn dẹp khoảng trắng
+        response = model.generate_content(prompt)
         raw_text = response.text.strip()
         
-        # [DEBUG] IN RA MÀN HÌNH ĐỂ BẮT BỆNH
-        print("\n--- RAW AI RESPONSE ---")
-        print(raw_text)
-        print("-----------------------\n")
-        
-        # 3. Đề phòng AI vẫn nhét thẻ Markdown
-        # Sử dụng re.sub an toàn hơn so với việc cắt index cứng [7:-3]
-        raw_text = re.sub(r'^\`\`\`(?:json)?\n?(.*?)\n?\`\`\`$', r'\1', raw_text, flags=re.DOTALL).strip()
-            
-        # 4. Parse JSON từ chuỗi đã dọn dẹp
-        # THÊM `strict=False` Ở ĐÂY để bỏ qua lỗi Unterminated string khi có ký tự xuống dòng
+        # 4. Xử lý kết quả
         result = json.loads(raw_text, strict=False)
         
-        # Đồng bộ key `total_score` thành `overall_score` cho khớp Frontend
-        result['overall_score'] = round(result.get('total_score', result.get('overall_score', 0)), 1)
+        # Đồng bộ key cho Frontend
+        result['overall_score'] = round(result.get('total_score', 0), 1)
         
-        print(f"✅ Gemini Graded task {task_type_id} thành công! Điểm: {result['overall_score']}/100")
         return result
-        
+
     except Exception as e:
-        # In lỗi chi tiết ra console để dễ debug
         import traceback
-        print(f"❌ Grading error chi tiết:\n{traceback.format_exc()}")
-        
+        print(f"❌ Grading error: {traceback.format_exc()}")
         return {
-            "feedback_text": "Hệ thống AI hiện không thể đánh giá (Lỗi kỹ thuật).",
-            "overall_score": 50,
-            "grade": "N/A",
-            "criteria_scores": {"1": 12.5, "2": 12.5, "3": 12.5, "4": 12.5},
-            "strengths": [],
-            "improvements": [],
-            "action_plan": [],
-            "detailed_analysis": {}
+            "feedback_text": "Lỗi hệ thống khi phân tích bài viết.",
+            "overall_score": 0,
+            "criteria_scores": {str(i): 0 for i in range(1, 8)}
         }

@@ -19,6 +19,7 @@ class Submission(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)  # For re-submissions
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    word_file_path = db.Column(db.String(500), nullable=True)  # Path to teacher-uploaded corrected Word file
 
     # Self-referential relationship for parent submissions
     parent = db.relationship('Submission', remote_side=[id], backref='children')

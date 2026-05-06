@@ -36,6 +36,9 @@ export const API_ENDPOINTS = {
   //change
   CHANGE_PASSWORD: `${API_BASE_URL}/api/auth/change-password`,
   TEACHER_UPLOAD_WORD: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/upload-word`,
+
+  // api download file submission
+  API_BASE_URL_SERVER_DOWNLOADFILE : `${API_BASE_URL}`
 };
 
 export default API_BASE_URL;

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
@@ -55,13 +55,14 @@ const CRITERIA = [
   }}
 ];
 
-export default function TeacherGradeSubmissionPage({ params }: { params: { id: string } }) {
+export default function TeacherGradeSubmissionPage() {
   const router = useRouter();
-  const submissionId = params.id;
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const params = useParams();
+  const submissionId = params.id as string;
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
   
   // Khởi tạo State với giá trị mặc định sạch
@@ -76,7 +77,7 @@ export default function TeacherGradeSubmissionPage({ params }: { params: { id: s
   const fetchSubmission = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
-  
+	console.log("submissionId: '" + submissionId + "'");
     try {
       const response = await fetch(`${API_ENDPOINTS.TEACHER_SUBMISSIONS}/${submissionId}`, {
         headers: { Authorization: `Bearer ${token}` }

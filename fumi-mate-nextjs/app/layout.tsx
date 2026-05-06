@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DM_Serif_Text, Zen_Maru_Gothic, Dancing_Script } from 'next/font/google'; 
+import { DM_Serif_Text, Parisienne, Zen_Maru_Gothic, Dancing_Script } from 'next/font/google'; 
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import DynamicBar from '@/components/layout/DynamicBar';

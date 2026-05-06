@@ -8,7 +8,6 @@ import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { Submission, TeacherFeedbackData } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
-import {API_BASE_URL_SERVER_DOWNLOADFILE} from '@/lib/apiConfig'
 
 // Cấu trúc 7 tiêu chí chuẩn
 const CRITERIA = [
@@ -210,7 +209,7 @@ export default function TeacherGradeSubmissionPage() {
         {/* HIỂN THỊ FILE ĐÃ CHẤM NẾU CÓ */}
         {isGraded && submission.word_file_path && (
           <a 
-            href={`${API_BASE_URL_SERVER_DOWNLOADFILE}${submission.word_file_path}`}
+            href={`${API_ENDPOINTS.SERVER_DOWNLOADFILE}${submission.word_file_path}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold border border-emerald-100 hover:bg-emerald-100 transition-all text-sm animate-in fade-in slide-in-from-left-4"

@@ -19,7 +19,6 @@ const TEACHER_CRITERIA_NAMES: Record<string, string> = {
   '7': 'Văn phong / ngữ dụng (10)'
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 export default function SubmissionDetailPage() {
   const params = useParams();
@@ -106,7 +105,7 @@ export default function SubmissionDetailPage() {
               </div>
             </div>
             <a 
-              href={`${API_BASE_URL}${submission.word_file_path}`} 
+              href={`${API_ENDPOINTS.SERVER_DOWNLOADFILE}${submission.word_file_path}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="w-full md:w-auto px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all text-center shadow-md shadow-emerald-200 flex items-center justify-center gap-2"

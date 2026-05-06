@@ -38,7 +38,7 @@ export const API_ENDPOINTS = {
   TEACHER_UPLOAD_WORD: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/upload-word`,
 
   // api download file submission
-  API_BASE_URL_SERVER_DOWNLOADFILE : `${API_BASE_URL}`
+  SERVER_DOWNLOADFILE : `${API_BASE_URL}`
 };
 
 export default API_BASE_URL;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams,useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 
@@ -37,9 +37,10 @@ type Task = {
   };
 };
 
-export default function WritingTestPage({ params }: { params: { id: string } }) {
+export default function WritingTestPage() {
   const router = useRouter();
-  const taskId = params.id;
+  const params = useParams();
+  const taskId = params.id as string;
   
   const [task, setTask] = useState<Task | null>(null);
   const [submission, setSubmission] = useState<{id: number; content: string; status: string;} | null>(null);

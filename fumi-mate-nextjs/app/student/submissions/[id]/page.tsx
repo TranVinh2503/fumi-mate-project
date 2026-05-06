@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 import { FeedbackData } from '@/lib/types';
 import { parseJSON } from '@/lib/utils';
+import { useParams, useRouter } from 'next/navigation';
+
 
 // Cấu hình tên 7 tiêu chí chuẩn từ phía giáo viên
 const TEACHER_CRITERIA_NAMES: Record<string, string> = {
@@ -19,7 +21,8 @@ const TEACHER_CRITERIA_NAMES: Record<string, string> = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
-export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
+export default function SubmissionDetailPage() {
+  const params = useParams();
   const submissionId = params.id;
   const [submission, setSubmission] = useState<any | null>(null);
   const [feedback, setFeedback] = useState<any>({});  

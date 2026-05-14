@@ -133,17 +133,17 @@ export default function TeacherGradeSubmissionPage() {
         return level && score > 0 ? `${c.name}: ${level.desc}` : null;
       }).filter(Boolean);
 
-      let newGrade = 'F';
-      if (newTotal >= 90) newGrade = 'A';
-      else if (newTotal >= 80) newGrade = 'B';
-      else if (newTotal >= 70) newGrade = 'C';
-      else if (newTotal >= 60) newGrade = 'D';
+      // let newGrade = 'F';
+      // if (newTotal >= 90) newGrade = 'A';
+      // else if (newTotal >= 80) newGrade = 'B';
+      // else if (newTotal >= 70) newGrade = 'C';
+      // else if (newTotal >= 60) newGrade = 'D';
 
       return {
         ...prev,
         criteria_scores: newScores,
         overall_score: parseFloat(newTotal.toFixed(2)),
-        grade: newGrade,
+        grade: "",
         feedback_text: feedbackLines.join('\n\n')
       };
     });
@@ -318,11 +318,11 @@ export default function TeacherGradeSubmissionPage() {
                 </span>
               </div>
             
-            <div className="mt-8 bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100/50">
+            {/* <div className="mt-8 bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100/50">
               <p className="text-[10px] uppercase font-bold text-indigo-900/40 mb-1">Xếp loại dự kiến</p>
               <span className="text-4xl font-black text-indigo-700">{formData.grade || '-'}</span>
             </div>
-  
+   */}
             <div className="mt-10 text-left space-y-4">
               <label className="block text-sm font-bold text-slate-700">Nhận xét tổng quát</label>
               <textarea 

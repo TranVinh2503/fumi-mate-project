@@ -136,11 +136,11 @@ export default function SubmissionDetailPage() {
                     <span className="text-7xl font-black text-indigo-600 tracking-tighter">{displayScore ?? '—'}</span>
                     <span className="ml-2 text-xl font-bold text-slate-300">/100</span>
                   </div>
-                  {feedback.grade && (
+                  {/* {feedback.grade && (
                     <div className="mt-6 px-6 py-2 bg-indigo-600 text-white text-sm font-black rounded-xl uppercase shadow-lg shadow-indigo-100">
                       Loại {feedback.grade}
                     </div>
-                  )}
+                  )} */}
                 </div>
                 <div className="flex-1 p-8">
                   <h6 className="font-bold text-gray-800 mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">

@@ -20,6 +20,7 @@
       {
         "id": 1,
         "topic": "homestay_thank_you",
+        "title": "Thư cảm ơn gia đình homestay",
         "requirements": [
           "2 kỷ niệm",
           "lời cảm ơn",
@@ -29,6 +30,7 @@
       {
         "id": 2,
         "topic": "sick_friend",
+        "title": "Thư hỏi thăm bạn bị ốm",
         "requirements": [
           "thể hiện sự lo lắng",
           "chúc mau khỏe",
@@ -38,6 +40,7 @@
       {
         "id": 3,
         "topic": "advice_japanese_major",
+        "title": "Thư tư vấn ngành tiếng Nhật",
         "requirements": [
           "ưu điểm ngành",
           "khó khăn",
@@ -49,6 +52,7 @@
       {
         "id": 4,
         "topic": "influential_quote",
+        "title": "Bài phát biểu về câu nói có ảnh hưởng",
         "requirements": [
           "cơ duyên biết",
           "ý nghĩa",
@@ -58,6 +62,7 @@
       {
         "id": 5,
         "topic": "failure_experience",
+        "title": "Bài phát biểu về trải nghiệm thất bại",
         "requirements": [
           "mô tả thất bại",
           "cảm xúc",
@@ -68,6 +73,7 @@
       {
         "id": 6,
         "topic": "judging_by_appearance",
+        "title": "Bài phát biểu về đánh giá qua ngoại hình",
         "requirements": [
           "trải nghiệm cá nhân",
           "phân tích vấn đề",
@@ -79,6 +85,7 @@
       {
         "id": 7,
         "topic": "movie_review",
+        "title": "Bài nêu cảm nghĩ về phim",
         "requirements": [
           "cảnh ấn tượng",
           "lý do",
@@ -88,6 +95,7 @@
       {
         "id": 8,
         "topic": "student_stress",
+        "title": "Bài nêu ý kiến về stress của sinh viên",
         "requirements": [
           "ví dụ cụ thể",
           "nguyên nhân",
@@ -97,6 +105,7 @@
       {
         "id": 9,
         "topic": "living_alone_vs_family",
+        "title": "Bài so sánh sống một mình và sống cùng gia đình",
         "requirements": [
           "ưu điểm",
           "nhược điểm",
@@ -107,45 +116,133 @@
   },
   "rubric": {
     "total_score": 100,
+    "levels": [
+      "M4",
+      "M3",
+      "M2",
+      "M1"
+    ],
     "criteria": [
       {
-        "name": "Hoàn thành nhiệm vụ giao tiếp",
-        "max_score": 25,
-        "items": [
-          "Đúng chủ đề",
-          "Đúng dạng bài",
-          "Văn phong phù hợp",
-          "Độ dài phù hợp"
-        ]
+        "id": "1",
+        "name": "Hoàn thành yêu cầu đề",
+        "max_score": 15,
+        "scores": {
+          "M4": 15,
+          "M3": 11.25,
+          "M2": 7.5,
+          "M1": 3.75
+        },
+        "descriptors": {
+          "M4": "Đáp ứng đầy đủ yêu cầu đề; bám sát chủ đề, đúng mục đích và dạng bài; không bỏ sót ý chính",
+          "M3": "Đáp ứng phần lớn yêu cầu; có thể thiếu nhẹ một ý hoặc một phần triển khai",
+          "M2": "Chỉ đáp ứng một phần yêu cầu; còn thiếu ý hoặc lệch một phần so với đề",
+          "M1": "Lạc đề, sai dạng bài hoặc bỏ sót phần lớn yêu cầu"
+        }
       },
       {
-        "name": "Tổ chức & Nội dung",
-        "max_score": 25,
-        "items": [
-          "Mở - Thân - Kết",
-          "Đủ ý",
-          "Logic",
-          "Liên kết"
-        ]
+        "id": "2",
+        "name": "Nội dung và phát triển ý",
+        "max_score": 15,
+        "scores": {
+          "M4": 15,
+          "M3": 11.25,
+          "M2": 7.5,
+          "M1": 3.75
+        },
+        "descriptors": {
+          "M4": "Ý rõ ràng, có triển khai, giải thích hoặc minh họa phù hợp",
+          "M3": "Ý tương đối rõ; có phát triển nhưng chưa đều hoặc còn đơn giản",
+          "M2": "Ý nghèo, lặp, phát triển hạn chế; ít minh họa/hỗ trợ",
+          "M1": "Nội dung rất ít, rời rạc, khó hình thành thông điệp"
+        }
       },
       {
-        "name": "Từ vựng & Diễn đạt",
-        "max_score": 25,
-        "items": [
-          "Từ vựng phù hợp",
-          "Đa dạng",
-          "Diễn đạt tự nhiên"
-        ]
+        "id": "3",
+        "name": "Bố cục và mạch lạc",
+        "max_score": 15,
+        "scores": {
+          "M4": 15,
+          "M3": 11.25,
+          "M2": 7.5,
+          "M1": 3.75
+        },
+        "descriptors": {
+          "M4": "Bố cục rõ; sắp xếp ý logic; liên kết tự nhiên; dễ theo dõi",
+          "M3": "Có bố cục cơ bản; nhìn chung logic; còn vài chỗ chuyển ý chưa mượt",
+          "M2": "Trình tự ý chưa hợp lý; liên kết yếu; có đoạn khó theo dõi",
+          "M1": "Ý rời rạc, thiếu tổ chức; rất khó theo dõi"
+        }
       },
       {
-        "name": "Ngữ pháp & chính tả",
-        "max_score": 25,
-        "items": [
-          "Ngữ pháp phù hợp",
-          "Đa dạng",
-          "Chính xác",
-          "Chính tả"
-        ]
+        "id": "4",
+        "name": "Ngữ pháp / cấu trúc",
+        "max_score": 20,
+        "scores": {
+          "M4": 20,
+          "M3": 15,
+          "M2": 10,
+          "M1": 5
+        },
+        "descriptors": {
+          "M4": "Dùng đúng và khá đa dạng cấu trúc ở mức đích; lỗi ít, không cản hiểu",
+          "M3": "Dùng được các cấu trúc cần thiết; có lỗi nhưng nhìn chung vẫn rõ nghĩa",
+          "M2": "Chủ yếu dùng cấu trúc đơn giản; lỗi xuất hiện thường xuyên, đôi lúc cản hiểu",
+          "M1": "Lỗi dày đặc; ảnh hưởng lớn đến việc hiểu nội dung"
+        }
+      },
+      {
+        "id": "5",
+        "name": "Từ vựng",
+        "max_score": 15,
+        "scores": {
+          "M4": 15,
+          "M3": 11.25,
+          "M2": 7.5,
+          "M1": 3.75
+        },
+        "descriptors": {
+          "M4": "Từ vựng phù hợp chủ đề; tương đối đa dạng; dùng từ khá chính xác",
+          "M3": "Vốn từ đủ dùng; còn lặp từ hoặc vài chỗ dùng từ chưa thật tự nhiên",
+          "M2": "Vốn từ hạn chế; dùng từ sai/chưa đúng ngữ cảnh khá nhiều",
+          "M1": "Rất hạn chế về từ vựng; nhiều chỗ không diễn đạt được ý"
+        }
+      },
+      {
+        "id": "6",
+        "name": "Chữ viết tiếng Nhật / chính tả",
+        "max_score": 10,
+        "notes": "hiragana, katakana, kanji, okurigana, dấu câu, trình bày",
+        "scores": {
+          "M4": 10,
+          "M3": 7.5,
+          "M2": 5,
+          "M1": 2.5
+        },
+        "descriptors": {
+          "M4": "Dùng chữ viết và chính tả nhìn chung đúng, ổn định; bài dễ đọc",
+          "M3": "Có một số lỗi nhưng không ảnh hưởng đáng kể đến việc đọc hiểu",
+          "M2": "Lỗi khá nhiều; làm giảm độ rõ và độ trôi chảy khi đọc",
+          "M1": "Lỗi thường xuyên; ảnh hưởng rõ đến khả năng đọc hiểu"
+        }
+      },
+      {
+        "id": "7",
+        "name": "Văn phong và ngữ dụng",
+        "max_score": 10,
+        "notes": "thể thường/thể lịch sự, cách diễn đạt, mức phù hợp với người đọc và mục đích",
+        "scores": {
+          "M4": 10,
+          "M3": 7.5,
+          "M2": 5,
+          "M1": 2.5
+        },
+        "descriptors": {
+          "M4": "Văn phong phù hợp; register nhất quán; diễn đạt đúng ngữ cảnh",
+          "M3": "Nhìn chung phù hợp; có vài chỗ lệch văn phong hoặc chưa tự nhiên",
+          "M2": "Nhiều chỗ lẫn lộn văn phong/ngữ dụng; giảm tính phù hợp của bài viết",
+          "M1": "Văn phong không phù hợp rõ rệt; gây lệch sắc thái hoặc mục đích giao tiếp"
+        }
       }
     ]
   },

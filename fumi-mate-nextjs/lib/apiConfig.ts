@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
   STUDENT_SUBMISSIONS: `${API_BASE_URL}/api/student/submissions`,
   TEACHER_GRADE_SUBMISSION: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/grade`,
   TEACHER_AI_GRADE_SUBMISSION: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/ai-grade`,
+  TEACHER_PUBLISH_AI_GRADE_SUBMISSION: (id: number) => `${API_BASE_URL}/api/teacher/submissions/${id}/publish-ai-grade`,
   
 // Teacher
   TEACHER_TASKS: `${API_BASE_URL}/api/teacher/tasks`,

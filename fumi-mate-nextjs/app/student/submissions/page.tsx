@@ -46,23 +46,31 @@ export default function StudentSubmissionsPage() {
     router.push(`/student/submissions/${String(submissionId)}`);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getDisplayScore = (sub: Submission) => {
+    return sub.experimental_group === 'control'
+      ? (sub.teacherScore ?? sub.teacher_score)
+      : (sub.aiScore ?? sub.ai_score);
+  };
+
+  const getStatusBadge = (sub: Submission) => {
     const baseClass = 'px-2 py-1 rounded text-xs font-medium';
-    switch (status.toLowerCase()) {
-      case 'draft':
-        return <span className={`badge badge-secondary bg-gray-100 text-gray-800 ${baseClass}`}>Bản nháp</span>;
-      case 'submitted':
-        return <span className={`badge bg-yellow-100 text-yellow-800 ${baseClass}`}>Chờ chấm</span>;
-      case 'ai_graded':
-      case 'ai_done':
-        // return <span className={`badge badge-success bg-green-100 text-green-800 ${baseClass}`}>AI đã chấm</span>;
-        return <span className={`badge badge-success bg-green-100 text-green-800 ${baseClass}`}>GV đã chấm</span>;
-      case 'teacher_graded':
-      case 'done':
-        return <span className={`badge badge-info bg-blue-100 text-blue-800 ${baseClass}`}>GV đã chấm</span>;
-      default:
-        return <span className={`badge bg-gray-100 text-gray-800 ${baseClass}`}>{status || '—'}</span>;
+
+    if (sub.status === 'draft') {
+      return <span className={`badge badge-secondary bg-gray-100 text-gray-800 ${baseClass}`}>Bản nháp</span>;
     }
+
+    if (sub.experimental_group === 'control') {
+      if (sub.teacherScore !== null && sub.teacherScore !== undefined || sub.teacher_score !== null && sub.teacher_score !== undefined) {
+        return <span className={`badge badge-info bg-blue-100 text-blue-800 ${baseClass}`}>Đã có kết quả</span>;
+      }
+      return <span className={`badge bg-yellow-100 text-yellow-800 ${baseClass}`}>Chờ chấm</span>;
+    }
+
+    if (sub.aiScore !== null && sub.aiScore !== undefined || sub.ai_score !== null && sub.ai_score !== undefined) {
+      return <span className={`badge badge-success bg-green-100 text-green-800 ${baseClass}`}>Đã có kết quả</span>;
+    }
+
+    return <span className={`badge bg-yellow-100 text-yellow-800 ${baseClass}`}>Chờ chấm</span>;
   };
 
   return (
@@ -112,15 +120,15 @@ export default function StudentSubmissionsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {getStatusBadge(String(sub.status))}
+                      {getStatusBadge(sub)}
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {formatDateTime(sub.updatedAt ?? sub.createdAt ?? sub.updated_at ?? sub.created_at ?? '') || '—'}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.aiScore || sub.teacherScore || sub.ai_score || sub.teacher_score ? (
+                      {getDisplayScore(sub) !== null && getDisplayScore(sub) !== undefined ? (
                         <span className="font-semibold text-blue-600">
-                          {sub.aiScore || sub.teacherScore || sub.ai_score || sub.teacher_score}
+                          {getDisplayScore(sub)}
                         </span>
                       ) : (
                         <span className="text-gray-400">—</span>

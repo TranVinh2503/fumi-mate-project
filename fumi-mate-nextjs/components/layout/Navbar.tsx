@@ -78,7 +78,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4">
             <NavLinks />
             {user.isAuthenticated && (
-              <ProfileDropdown username={user.username || 'Người dùng'} role={user.userRole} onLogout={handleLogout} />
+              <ProfileDropdown username={user.username || 'Người dùng'} role={user.userRole || 'student'} onLogout={handleLogout} />
             )}
           </div>
 

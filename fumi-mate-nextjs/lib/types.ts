@@ -24,12 +24,15 @@ export interface User {
 // Task Types
 export interface Task {
   id: number | string;
-  title: string;
+  title?: string;
+  question_id?: string;
+  teacher_id?: string;
   description?: string;
   difficulty?: string;
   dueDate?: string;
   deadline?: string;
   startDate?: string;
+  taskTypeId?: number | null;
   createdAt?: string;
   isDone?: boolean;
   attemptCount?: number;
@@ -60,7 +63,7 @@ export interface Question {
 }
 
 // Submission Types
-export type SubmissionStatus = 'draft' | 'submitted' | 'ai_graded' | 'teacher_graded' | 'reviewed';
+export type SubmissionStatus = 0 | 1 | 2 | 3 | 4 | 'draft' | 'submitted' | 'ai_graded' | 'ai_teacher_graded' | 'teacher_graded' | 'reviewed';
 
 export interface Submission {
   id: number | string;
@@ -145,30 +148,78 @@ export interface UpdateSubmissionRequest {
   teacher_feedback?: string;
 }
 
+export type GradingMethod =
+  | 'teacher_manual'
+  | 'ai_generated'
+  | 'gemini_rubric'
+  | 'ai_7_criteria_gemini'
+  | 'heuristic_7_criteria_fallback'
+  | 'heuristic_dynamic'
+  | 'ai_heuristic';
+
 export interface TeacherFeedbackData extends FeedbackData {
-  grading_method?: 'teacher_manual';
+  grading_method?: GradingMethod;
 }
 
 // Enhanced FeedbackData for rubric grading
 export interface FeedbackData {
   grade?: string;
   feedback_text?: string;
+  ai_summary?: string;
+  corrected_text?: string;
+  error_reason?: string;
   action_plan?: string[];
   strengths?: string[];
   improvements?: string[];
+
+  // 7 criteria scores: { "1": 11.25, ..., "7": 7.5 }
   criteria_scores?: Record<string, number>;
+
+  // 7 criteria levels: { "1": "M3", ..., "7": "M2" }
+  criteria_levels?: Record<string, 'M1' | 'M2' | 'M3' | 'M4'>;
+
+  // Feedback riêng từng tiêu chí
+  criteria_feedback?: Record<string, string>;
+
   practice_exercises?: Array<{
     title: string;
     description: string;
     example?: string;
   }>;
+
   detailed_analysis?: {
-    grammar?: { score: number; issues?: string[]; suggestions?: string[] };
-    vocabulary?: { score: number; strengths?: string[]; improvements?: string[] };
-    structure?: { score: number; comments?: string };
-    fluency?: { score: number; feedback?: string };
-    content?: { score: number; feedback?: string };
+    grammar?: {
+      score?: number;
+      issues?: string[];
+      suggestions?: string[];
+    };
+    vocabulary?: {
+      score?: number;
+      strengths?: string[];
+      improvements?: string[];
+    };
+    structure?: {
+      score?: number;
+      comments?: string;
+    };
+    fluency?: {
+      score?: number;
+      feedback?: string;
+    };
+    content?: {
+      score?: number;
+      feedback?: string;
+    };
+
+    // thêm cho Japanese writing
+    kanji_orthography?: {
+      feedback?: string;
+    };
+    style_usage?: {
+      feedback?: string;
+    };
   };
+
   overall_score?: number;
   total_score?: number;
 }

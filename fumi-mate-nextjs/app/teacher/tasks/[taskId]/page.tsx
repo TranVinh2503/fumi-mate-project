@@ -148,8 +148,8 @@ export default function TeacherTaskDetailPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Hạn chót</label>
                   <p className="text-gray-900 font-medium">
-                    {task.dueDate || task.deadline ? 
-                      new Date(task.dueDate || task.deadline).toLocaleDateString('vi-VN', {
+                    {task.dueDate || task.deadline ?
+                      new Date((task.dueDate || task.deadline) as string).toLocaleDateString('vi-VN', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',

@@ -14,6 +14,71 @@ def get_current_user_id():
     identity = get_jwt_identity()
     return identity.get("id") if isinstance(identity, dict) else identity
 
+def is_submission_published(submission):
+    """Only expose grading results to students after teacher confirms/sends."""
+    return submission.status == 'teacher_graded'
+
+def has_teacher_result(submission):
+    return (
+        submission.teacher_score is not None
+        or bool(submission.teacher_feedback)
+        or bool(submission.word_file_path)
+    )
+
+def parse_feedback_text(feedback_text):
+    if not feedback_text:
+        return {}
+    try:
+        return json.loads(feedback_text)
+    except:
+        return {'feedback_text': feedback_text}
+
+def student_visible_grading_fields(submission, experimental_group):
+    """Return the result students are allowed to see.
+
+    Transitional rule:
+    - If a submission already has a real teacher result, show that result regardless of user group.
+    - Otherwise, only show group-specific results after the teacher publishes/sends.
+    """
+    if has_teacher_result(submission):
+        teacher_feedback = parse_feedback_text(submission.teacher_feedback)
+
+        return {
+            'aiScore': None,
+            'teacherScore': submission.teacher_score,
+            'aiFeedback': {},
+            'teacherFeedback': teacher_feedback,
+            'word_file_path': submission.word_file_path,
+        }
+
+    if not is_submission_published(submission):
+        return {
+            'aiScore': None,
+            'teacherScore': None,
+            'aiFeedback': {},
+            'teacherFeedback': {},
+            'word_file_path': None,
+        }
+
+    if experimental_group == 'control':
+        return {
+            'aiScore': None,
+            'teacherScore': None,
+            'aiFeedback': {},
+            'teacherFeedback': {},
+            'word_file_path': None,
+        }
+
+    ai_feedback = parse_feedback_text(submission.ai_feedback)
+
+    return {
+        'aiScore': submission.ai_score,
+        'teacherScore': None,
+        'aiFeedback': ai_feedback,
+        'teacherFeedback': {},
+        'word_file_path': None,
+    }
+
 @student_bp.route("/tasks", methods=["GET"]) # Bỏ OPTIONS vì CORS đã lo
 @jwt_required()
 @role_required("student")
@@ -49,6 +114,7 @@ def get_tasks():
             "title": task.title,
             "description": task.description,
             "difficulty": task.difficulty,
+            "taskTypeId": task.task_type_id,
             "dueDate": task.due_date.isoformat() if task.due_date else None,
 "isDone": submission is not None and submission.status != "draft",
             "attemptCount": submission.attempt_count if submission else 1,
@@ -86,6 +152,7 @@ def get_task(task_id):
         'title': task.title,
         'description': task.description,
         'difficulty': task.difficulty,
+        'taskTypeId': task.task_type_id,
         'dueDate': task.due_date.isoformat() if task.due_date else None,
         'createdAt': task.created_at.isoformat() if task.created_at else None,
         'questions': [
@@ -122,19 +189,21 @@ def get_submissions():
     submissions_data = []
     for sub in submissions:
         task_obj = Task.query.get(sub.task_id) if sub.task_id else None
+        visible_grading = student_visible_grading_fields(sub, user.experimental_group)
         submissions_data.append({
             'id': sub.id,
+            'experimental_group': user.experimental_group,
             'task': {
                 'id': task_obj.id if task_obj else None,
                 'title': task_obj.title if task_obj else None
             } if task_obj else None,
             'content': sub.content,
             'status': sub.status,
-'aiScore': sub.ai_score,
-            'teacherScore': sub.teacher_score,
+            'aiScore': visible_grading['aiScore'],
+            'teacherScore': visible_grading['teacherScore'],
             'attemptCount': sub.attempt_count,
-            'aiFeedback': sub.ai_feedback,
-'teacherFeedback': sub.teacher_feedback,
+            'aiFeedback': visible_grading['aiFeedback'],
+            'teacherFeedback': visible_grading['teacherFeedback'],
             'lateMinutes': sub.late_minutes,
             'createdAt': sub.created_at.isoformat() if sub.created_at else None,
             'updatedAt': sub.updated_at.isoformat() if sub.updated_at else None
@@ -151,23 +220,8 @@ def get_submission_detail(submission_id):
     if not submission or submission.student_id != int(user_id):
         return jsonify({'error': 'Unauthorized or not found'}), 404
 
-    # Parse AI feedback
-    ai_feedback = {}
-    if submission.ai_feedback:
-        try:
-            ai_feedback = json.loads(submission.ai_feedback)
-        except:
-            ai_feedback = {'feedback_text': submission.ai_feedback}
-
-    # Parse Teacher feedback (Mới)
-    teacher_feedback_parsed = {}
-    if submission.teacher_feedback:
-        try:
-            teacher_feedback_parsed = json.loads(submission.teacher_feedback)
-        except:
-            teacher_feedback_parsed = {'feedback_text': submission.teacher_feedback}
-
     task_obj = Task.query.get(submission.task_id) if submission.task_id else None
+    visible_grading = student_visible_grading_fields(submission, submission.student.experimental_group)
     
     submission_data = {
         'id': submission.id,
@@ -179,11 +233,11 @@ def get_submission_detail(submission_id):
         } if task_obj else None,
         'content': submission.content,
         'status': submission.status,
-        'aiScore': submission.ai_score,
-        'teacherScore': submission.teacher_score,
-        'aiFeedback': ai_feedback,
-        'teacherFeedback': teacher_feedback_parsed, # Đã parse thành object
-        'word_file_path': submission.word_file_path, # THÊM TRƯỜNG NÀY
+        'aiScore': visible_grading['aiScore'],
+        'teacherScore': visible_grading['teacherScore'],
+        'aiFeedback': visible_grading['aiFeedback'],
+        'teacherFeedback': visible_grading['teacherFeedback'],
+        'word_file_path': visible_grading['word_file_path'],
         'createdAt': submission.created_at.isoformat() if submission.created_at else None,
         'updatedAt': submission.updated_at.isoformat() if submission.updated_at else None
     }
@@ -207,7 +261,7 @@ def grade_submission(submission_id):
         return jsonify({'error': 'AI grading only for variant group.'}), 403
 
     task = Task.query.get(submission.task_id)
-    if not task or not task.task_type_id:
+    if not task or task.task_type_id is None:
         return jsonify({'error': 'Task missing task_type_id.'}), 400
 
     try:
@@ -408,6 +462,19 @@ def submit_test(task_id):
             submission.late_minutes = max(0, delta.total_seconds() / 60.0)
         else:
             submission.late_minutes = 0.0
+
+        if user.experimental_group == 'variant' and task and task.task_type_id is not None:
+            try:
+                ai_feedback_data = generate_ai_feedback(
+                    content,
+                    task=task,
+                    difficulty=task.difficulty or 'N3'
+                )
+                submission.ai_feedback = json.dumps(ai_feedback_data, ensure_ascii=False)
+                submission.ai_score = ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0))
+                submission.status = 'ai_graded'
+            except Exception as e:
+                print(f"[SUBMIT-TEST] AI grading failed: {e}")
             
     db.session.commit()
 
@@ -417,6 +484,7 @@ def submit_test(task_id):
         'message': message,
         'submission': {
             'id': submission.id,
-            'status': submission.status
+            'status': submission.status,
+            'aiScore': submission.ai_score
         }
     }), 200

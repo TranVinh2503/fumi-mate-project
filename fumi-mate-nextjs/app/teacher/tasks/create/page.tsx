@@ -31,6 +31,19 @@ interface StudentItem {
   total_points: number;
 }
 
+const WRITING_TASK_TYPES = [
+  { id: 0, label: 'Pre/Post test - アルバイトは学業にとって有益か' },
+  { id: 1, label: 'Thư - Cảm ơn gia đình homestay' },
+  { id: 2, label: 'Thư - Hỏi thăm bạn bị ốm' },
+  { id: 3, label: 'Thư - Tư vấn ngành tiếng Nhật' },
+  { id: 4, label: 'Speech - Câu nói có ảnh hưởng' },
+  { id: 5, label: 'Speech - Trải nghiệm thất bại' },
+  { id: 6, label: 'Speech - Đánh giá qua ngoại hình' },
+  { id: 7, label: 'Opinion - Cảm nghĩ về phim' },
+  { id: 8, label: 'Opinion - Stress của sinh viên' },
+  { id: 9, label: 'Opinion - Sống một mình hay cùng gia đình' },
+];
+
 export default function CreateTaskPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -38,6 +51,7 @@ export default function CreateTaskPage() {
     description: '',
     difficulty: 'N5',
     dueDate: '',
+    taskTypeId: 0,
   });
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
   const [questionBank, setQuestionBank] = useState<QuestionBankItem[]>([]);
@@ -240,6 +254,7 @@ export default function CreateTaskPage() {
         description: formData.description,
         difficulty: formData.difficulty,
         dueDate: formData.dueDate || null,
+        taskTypeId: formData.taskTypeId,
         questionBankIds: selectedQuestionIds,
         studentIds: assignToAll ? [] : selectedStudentIds
       };
@@ -314,6 +329,22 @@ return (
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label htmlFor="difficulty" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cấp độ
+                </label>
+                <select
+                  id="difficulty"
+                  value={formData.difficulty}
+                  onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+                  className="custom-select w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {['N5', 'N4', 'N3', 'N2', 'N1'].map(level => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label htmlFor="dueDate" className="block text-sm font-semibold text-gray-700 mb-2">
                   Hạn chót nộp bài
                 </label>
@@ -325,6 +356,27 @@ return (
                   className="custom-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+            </div>
+
+            <div className="mt-4">
+              <label htmlFor="taskTypeId" className="block text-sm font-semibold text-gray-700 mb-2">
+                Loại đề dùng cho AI chấm rubric
+              </label>
+              <select
+                id="taskTypeId"
+                value={formData.taskTypeId}
+                onChange={(e) => setFormData({ ...formData, taskTypeId: Number(e.target.value) })}
+                className="custom-select w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                {WRITING_TASK_TYPES.map(taskType => (
+                  <option key={taskType.id} value={taskType.id}>
+                    {taskType.id}. {taskType.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-2">
+                AI dùng lựa chọn này để kiểm tra yêu cầu đề và chấm theo rubric 7 tiêu chí.
+              </p>
             </div>
           </div>
 

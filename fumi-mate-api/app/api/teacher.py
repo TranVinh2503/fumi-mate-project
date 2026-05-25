@@ -14,6 +14,8 @@ from app.models.submission import Submission
 from app.extensions import db
 from app.utils.permissions import role_required
 from app.services.gemini_service import grade_writing_submission
+from app.ai_services import generate_ai_feedback
+
 from werkzeug.utils import secure_filename
 import os
 
@@ -76,7 +78,8 @@ def get_teacher_tasks():
                 'dueDate': task.due_date.isoformat() if task.due_date else None,
                 'createdAt': task.created_at.isoformat() if task.created_at else None,
                 'isDone': task.is_done,
-                'questionCount': question_count
+                'questionCount': question_count,
+                'taskTypeId': task.task_type_id
             })
         
         return jsonify({
@@ -101,7 +104,8 @@ def create_task():
         "difficulty": "string",
         "dueDate": "string (ISO format)",
         "questionBankIds": [int, int, ...],
-        "studentIds": [int, int, ...] (optional - if empty/null, task is visible to all students)
+        "studentIds": [int, int, ...] (optional - if empty/null, task is visible to all students),
+        "taskTypeId": int (optional, 0-9 from writing_rubric.json)
     }
     """
     try:
@@ -123,6 +127,7 @@ def create_task():
         due_date_str = data.get('dueDate')
         question_bank_ids = data['questionBankIds']
         student_ids = data.get('studentIds', [])  # Optional: list of student IDs to assign
+        task_type_id = data.get('taskTypeId', data.get('task_type_id'))
 
         # Validate question_bank_ids
         if not isinstance(question_bank_ids, list) or len(question_bank_ids) == 0:
@@ -150,6 +155,14 @@ def create_task():
             except ValueError:
                 return jsonify({'error': 'Invalid dueDate format. Use ISO format.'}), 400
 
+        if task_type_id is not None:
+            try:
+                task_type_id = int(task_type_id)
+            except (TypeError, ValueError):
+                return jsonify({'error': 'taskTypeId must be an integer from 0 to 9'}), 400
+            if task_type_id < 0 or task_type_id > 9:
+                return jsonify({'error': 'taskTypeId must be an integer from 0 to 9'}), 400
+
         # Create task with assigned students
         assigned_students_json = json.dumps(student_ids) if student_ids else None
         
@@ -159,7 +172,8 @@ def create_task():
             difficulty=difficulty,
             due_date=due_date,
             created_by=user_id,
-            assigned_students=assigned_students_json
+            assigned_students=assigned_students_json,
+            task_type_id=task_type_id
         )
 
         db.session.add(new_task)
@@ -186,7 +200,8 @@ def create_task():
                 'difficulty': new_task.difficulty,
                 'dueDate': new_task.due_date.isoformat() if new_task.due_date else None,
                 'createdAt': new_task.created_at.isoformat(),
-                'questionCount': len(question_bank_ids)
+                'questionCount': len(question_bank_ids),
+                'taskTypeId': new_task.task_type_id
             }
         }), 201
 
@@ -249,7 +264,8 @@ def get_task_detail(task_id):
             'isDone': task.is_done,
             'questionCount': len(task.task_questions),
             'questions': questions_data,
-            'assignedStudents': assigned_students
+            'assignedStudents': assigned_students,
+            'taskTypeId': task.task_type_id
         }
         
         return jsonify({
@@ -286,6 +302,7 @@ def get_teacher_submissions():
                 'student_name': student.username if student else 'Unknown',
                 'task_id': sub.task_id,
                 'task_title': task.title if task else 'Unknown',
+                'experimental_group': student.experimental_group if student else None,
                 'content': sub.content[:100] + '...' if sub.content and len(sub.content) > 100 else sub.content,
                 'ai_score': sub.ai_score,
                 'teacher_score': sub.teacher_score,
@@ -335,8 +352,10 @@ def get_submission_detail(submission_id):
             'id': sub.id,
             'student_id': sub.student_id,
             'student_name': student.username if student else 'Unknown',
+            'experimental_group': student.experimental_group if student else None,
             'task_id': sub.task_id,
             'task_title': task.title,
+            'task_type_id': task.task_type_id,
             'content': sub.content,
             'ai_score': sub.ai_score,
             'ai_feedback': ai_feedback,
@@ -460,6 +479,10 @@ def grade_submission(submission_id):
         if not task or task.created_by != int(user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
+        student = User.query.get(sub.student_id)
+        if student and student.experimental_group == 'variant':
+            return jsonify({'error': 'Nhóm AI không cho phép giáo viên chấm thủ công. Hãy dùng AI Grade rồi gửi kết quả AI.'}), 403
+
         # 3. XỬ LÝ LƯU FILE VÀO THƯ MỤC STATIC (PUBLIC)
         if 'file' in request.files:
             file = request.files['file']
@@ -500,4 +523,111 @@ def grade_submission(submission_id):
         db.session.rollback()
         import traceback
         print(f"Teacher grading error: {traceback.format_exc()}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@teacher_bp.route('/submissions/<int:submission_id>/ai-grade', methods=['PATCH'])
+@jwt_required()
+@role_required('teacher')
+def teacher_ai_grade_submission(submission_id):
+    """Teacher-triggered AI grading (separate from teacher manual grading).
+
+    Writes ONLY:
+    - submission.ai_feedback
+    - submission.ai_score
+    - submission.status = 'ai_teacher_graded'
+
+    Does NOT touch:
+    - submission.teacher_score
+    - submission.teacher_feedback
+    """
+    try:
+        user_id = get_current_user_id()
+
+        sub = Submission.query.get(submission_id)
+        if not sub:
+            return jsonify({'error': 'Submission not found'}), 404
+
+        task = Task.query.get(sub.task_id)
+        if not task or task.created_by != int(user_id):
+            return jsonify({'error': 'Not authorized for this task'}), 403
+
+        # Choose difficulty fallback
+        difficulty = getattr(task, 'difficulty', None) or 'N3'
+
+        ai_feedback_data = generate_ai_feedback(sub.content or '', task=task, difficulty=difficulty)
+
+        sub.ai_feedback = json.dumps(ai_feedback_data, ensure_ascii=False)
+        sub.ai_score = float(ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0)) or 0)
+        sub.status = 'ai_teacher_graded'
+        sub.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        grading_method = ai_feedback_data.get('grading_method', 'unknown')
+        is_fallback = grading_method == 'heuristic_7_criteria_fallback'
+        print(f"[TEACHER-AI-GRADE] submission_id={sub.id} task_id={task.id} student_id={sub.student_id} method={grading_method} score={sub.ai_score} fallback={is_fallback}")
+        print(f"[TEACHER-AI-GRADE] criteria_levels={json.dumps(ai_feedback_data.get('criteria_levels', {}), ensure_ascii=False)}")
+        print(f"[TEACHER-AI-GRADE] criteria_scores={json.dumps(ai_feedback_data.get('criteria_scores', {}), ensure_ascii=False)}")
+        print(f"[TEACHER-AI-GRADE] criteria_feedback={json.dumps(ai_feedback_data.get('criteria_feedback', {}), ensure_ascii=False)}")
+        if ai_feedback_data.get('error_reason'):
+            print(f"[TEACHER-AI-GRADE] error_reason={ai_feedback_data.get('error_reason')}")
+
+        return jsonify({
+            'success': True,
+            'message': 'AI graded successfully (teacher trigger)' if not is_fallback else 'AI grading used fallback. Check error_reason before using this score.',
+            'submission_id': sub.id,
+            'ai_score': sub.ai_score,
+            'ai_feedback': ai_feedback_data,
+            'grading_method': grading_method,
+            'is_fallback': is_fallback,
+            'error_reason': ai_feedback_data.get('error_reason'),
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(f"Teacher AI grading error: {traceback.format_exc()}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@teacher_bp.route('/submissions/<int:submission_id>/publish-ai-grade', methods=['PATCH'])
+@jwt_required()
+@role_required('teacher')
+def publish_ai_grade_submission(submission_id):
+    """Publish AI grading result for variant group without teacher manual grading."""
+    try:
+        user_id = get_current_user_id()
+
+        sub = Submission.query.get(submission_id)
+        if not sub:
+            return jsonify({'error': 'Submission not found'}), 404
+
+        task = Task.query.get(sub.task_id)
+        if not task or task.created_by != int(user_id):
+            return jsonify({'error': 'Not authorized for this task'}), 403
+
+        student = User.query.get(sub.student_id)
+        if not student or student.experimental_group != 'variant':
+            return jsonify({'error': 'Chỉ nhóm AI mới được gửi kết quả AI.'}), 403
+
+        if sub.ai_score is None or not sub.ai_feedback:
+            return jsonify({'error': 'Chưa có kết quả AI để gửi. Hãy bấm AI Grade trước.'}), 400
+
+        sub.status = 'teacher_graded'
+        sub.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Đã gửi kết quả AI cho sinh viên.',
+            'submission_id': sub.id,
+            'status': sub.status,
+            'ai_score': sub.ai_score,
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(f"Publish AI grading error: {traceback.format_exc()}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500

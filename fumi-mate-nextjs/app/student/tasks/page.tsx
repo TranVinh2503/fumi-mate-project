@@ -122,7 +122,7 @@ export default function StudentTasksPage() {
                     )}
                     <div className="mt-auto pt-4 border-t border-gray-200">
                       <p className="text-xs text-gray-500 italic mb-2 text-center">
-                        Để xem chi tiết điểm và nhận xét của giáo viên:
+                        Để xem chi tiết điểm và nhận xét:
                       </p>
                       <Link 
                         href="/student/submissions" 

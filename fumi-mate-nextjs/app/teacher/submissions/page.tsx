@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
 // Đảm bảo bạn đã khai báo đúng type này trong lib/types
-import { SubmissionWithDetails } from '@/lib/types'; 
+import { SubmissionWithDetails } from '@/lib/types';
 import { Eye, CheckCircle, Clock, Loader2 } from 'lucide-react';
 
 export default function TeacherSubmissionsPage() {
@@ -15,6 +15,8 @@ export default function TeacherSubmissionsPage() {
   const [taskFilter, setTaskFilter] = useState('');
   // Sửa 2: Thêm loading state
   const [isLoading, setIsLoading] = useState(true);
+  const [aiGradingId, setAiGradingId] = useState<number | string | null>(null);
+  const [aiGradeError, setAiGradeError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -48,18 +50,53 @@ export default function TeacherSubmissionsPage() {
 
   // Hàm Helper để check xem đã chấm hay chưa (tránh lỗi điểm 0 hoặc null)
   const isGraded = (score: number | null | undefined) => score !== null && score !== undefined;
+  const isVariantSubmission = (sub: SubmissionWithDetails) => sub.experimental_group === 'variant';
+  const isPublishedResult = (sub: SubmissionWithDetails) =>
+    sub.status === 'teacher_graded' || isGraded(sub.teacher_score);
 
   const filteredSubmissions = submissions.filter(sub => {
-    // Sửa 3: Sửa lại logic lọc status
-    if (filter === 'submitted') return Number(sub.status) === 1 && !isGraded(sub.teacher_score);
-    if (filter === 'graded') return isGraded(sub.teacher_score);
+    if (filter === 'submitted') return !isPublishedResult(sub);
+    if (filter === 'graded') return isPublishedResult(sub);
     return true; // cho 'all'
-  }).filter(sub => 
+  }).filter(sub =>
     taskFilter === '' || (sub.task_title && sub.task_title.toLowerCase().includes(taskFilter.toLowerCase()))
   );
 
   const handleRowClick = (submissionId: string | number) => {
     router.push(`/teacher/submissions/${submissionId}`);
+  };
+
+  const handleAIGrade = async (submissionId: string | number) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setAiGradeError('Không tìm thấy access token.');
+      return;
+    }
+
+    setAiGradeError('');
+    setAiGradingId(submissionId);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.TEACHER_AI_GRADE_SUBMISSION(Number(submissionId)), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || 'AI chấm điểm thất bại');
+      }
+
+      router.push(`/teacher/submissions/${submissionId}`);
+    } catch (err: any) {
+      console.error(err);
+      setAiGradeError(err.message || 'AI chấm điểm thất bại');
+    } finally {
+      setAiGradingId(null);
+    }
   };
 
   // Nếu đang loading thì hiện vòng xoay
@@ -75,6 +112,12 @@ export default function TeacherSubmissionsPage() {
   return (
     <section className="section-padding mt-5 container mx-auto px-4">
       <h2 className="text-4xl font-bold mb-8">Student Submissions</h2>
+
+      {aiGradeError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {aiGradeError}
+        </div>
+      )}
 
       {/* Status Filter Tabs */}
       <div className="flex gap-4 mb-6">
@@ -97,7 +140,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          Chờ chấm ({submissions.filter(s => (s.status as any) === 1 && !isGraded(s.teacher_score)).length})
+          Chờ chấm ({submissions.filter(s => !isPublishedResult(s)).length})
         </button>
         <button
           onClick={() => setFilter('graded')}
@@ -108,7 +151,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          Đã chấm ({submissions.filter(s => isGraded(s.teacher_score)).length})
+          Đã chấm ({submissions.filter(s => isPublishedResult(s)).length})
         </button>
       </div>
 
@@ -152,7 +195,11 @@ export default function TeacherSubmissionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSubmissions.map((sub) => (
+                {filteredSubmissions.map((sub) => {
+                  const publishedResult = isPublishedResult(sub);
+                  const canRunAIGrade = !publishedResult && isVariantSubmission(sub);
+
+                  return (
                   <tr
                     key={sub.id}
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
@@ -184,25 +231,51 @@ export default function TeacherSubmissionsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {isGraded(sub.teacher_score) ? (
+                      {publishedResult ? (
                         <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded">Graded</span>
-                      ) : (sub.status as any) === 1? (
+                      ) : sub.status === 'submitted' || (sub.status as any) === 1 ? (
                         <span className="badge badge-warning bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span>
                       ) : (
                         <span className="badge badge-secondary bg-gray-100 text-gray-800 px-2 py-1 rounded">Draft</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => sub.id && handleRowClick(sub.id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors"
-                      >
-                        <Eye className="w-4 h-4" />
-                        {isGraded(sub.teacher_score) ? 'View' : 'Grade'}
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-center justify-center">
+                        <button
+                          onClick={() => sub.id && handleRowClick(sub.id)}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            publishedResult
+                              ? 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                              : 'bg-primary text-white hover:bg-secondary'
+                          }`}
+                        >
+                          <Eye className="w-4 h-4" />
+                          {publishedResult ? 'View' : 'Grade'}
+                        </button>
+                        {/* AI Grade button only for unpublished variant group submissions */}
+                        {canRunAIGrade && (
+                          <button
+                            type="button"
+                            onClick={() => sub.id && handleAIGrade(sub.id)}
+                            disabled={aiGradingId === sub.id}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {aiGradingId === sub.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                AI Grading...
+                              </>
+                            ) : (
+                              '🤖 AI Grade'
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
+
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

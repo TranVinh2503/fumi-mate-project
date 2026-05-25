@@ -6,6 +6,7 @@ import json
 import time
 import threading
 import hashlib
+import re
 # Rate limiting for free tier
 from pathlib import Path
 _rate_limit_lock = threading.Lock()
@@ -15,6 +16,22 @@ GEMINI_RATE_LIMIT_SECONDS = 30
 load_dotenv()
 # Cache for free tier
 _task_cache = {}
+
+DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+
+def _get_gemini_model_name() -> str:
+    return os.getenv('GEMINI_MODEL', DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
+
+def _log_ai_grading_result(label: str, data: Dict[str, Any], raw_text: Optional[str] = None) -> None:
+    print(f"[AI-GRADING:{label}] method={data.get('grading_method')} total={data.get('total_score')} overall={data.get('overall_score')} grade={data.get('grade')}")
+    print(f"[AI-GRADING:{label}] criteria_levels={json.dumps(data.get('criteria_levels', {}), ensure_ascii=False)}")
+    print(f"[AI-GRADING:{label}] criteria_scores={json.dumps(data.get('criteria_scores', {}), ensure_ascii=False)}")
+    print(f"[AI-GRADING:{label}] criteria_feedback={json.dumps(data.get('criteria_feedback', {}), ensure_ascii=False)}")
+    print(f"[AI-GRADING:{label}] corrected_text_preview={(data.get('corrected_text') or '')[:300]}")
+    if data.get('error_reason'):
+        print(f"[AI-GRADING:{label}] error_reason={data.get('error_reason')}")
+    if raw_text is not None:
+        print(f"[AI-GRADING:{label}] raw_response_preview={raw_text[:1500]}")
 
 # Predefined vocabulary and grammar hints for each topic
 TOPIC_HINTS = {
@@ -45,6 +62,124 @@ DEFAULT_HINTS = {
     "vocabulary": ["日本語", "作文", "表現", "文法", "語彙"],
     "grammar": ["〜たい", "〜と思います", "〜なければなりません", "例如"]
 }
+
+LEVEL_ORDER = ("M4", "M3", "M2", "M1")
+
+def _find_writing_task(rubric_data: Dict[str, Any], task_type_id: int) -> Optional[Dict[str, Any]]:
+    writing_tasks = rubric_data.get("writing_tasks", {})
+
+    pre_post = writing_tasks.get("pre_post_test")
+    if pre_post and pre_post.get("id") == task_type_id:
+        return {
+            "id": pre_post.get("id"),
+            "type": pre_post.get("type"),
+            "title": pre_post.get("title"),
+            "prompt_ja": pre_post.get("prompt_ja"),
+            "prompt_vi": pre_post.get("prompt_vi"),
+            "requirements": pre_post.get("requirement", {})
+        }
+
+    for task_type, tasks in writing_tasks.items():
+        if not isinstance(tasks, list):
+            continue
+        for task in tasks:
+            if task.get("id") == task_type_id:
+                return {
+                    "id": task.get("id"),
+                    "type": task_type,
+                    "title": task.get("title") or task.get("topic"),
+                    "topic": task.get("topic"),
+                    "requirements": task.get("requirements", [])
+                }
+
+    return None
+
+def _grade_from_score(total_score: float) -> str:
+    if total_score >= 90:
+        return "A"
+    if total_score >= 80:
+        return "B"
+    if total_score >= 70:
+        return "C"
+    if total_score >= 60:
+        return "D"
+    return "F"
+
+def _normalize_7_criteria_result(result: Dict[str, Any], rubric_data: Dict[str, Any]) -> Dict[str, Any]:
+    criteria = rubric_data.get("rubric", {}).get("criteria", [])
+    criteria_levels = result.get("criteria_levels") or {}
+    criteria_scores = result.get("criteria_scores") or {}
+    normalized_levels: Dict[str, str] = {}
+    normalized_scores: Dict[str, float] = {}
+
+    for criterion in criteria:
+        criterion_id = str(criterion.get("id"))
+        allowed_scores = criterion.get("scores", {})
+        level = str(criteria_levels.get(criterion_id, "")).upper()
+
+        if level not in allowed_scores:
+            raw_score = float(criteria_scores.get(criterion_id, 0) or 0)
+            level = min(
+                LEVEL_ORDER,
+                key=lambda key: abs(float(allowed_scores.get(key, 0)) - raw_score)
+            )
+
+        normalized_levels[criterion_id] = level
+        normalized_scores[criterion_id] = float(allowed_scores[level])
+
+    total_score = round(sum(normalized_scores.values()), 2)
+    result["criteria_levels"] = normalized_levels
+    result["criteria_scores"] = normalized_scores
+    result["total_score"] = total_score
+    result["overall_score"] = total_score
+    result["grade"] = result.get("grade") or _grade_from_score(total_score)
+    result["grading_method"] = result.get("grading_method") or "ai_7_criteria_gemini"
+    return result
+
+def _fallback_7criteria_feedback(content: str, rubric_data: Dict[str, Any], reason: str = "") -> Dict[str, Any]:
+    content = (content or "").strip()
+    japanese_chars = len(re.findall(r'[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff]', content))
+    sentence_count = max(1, len([s for s in re.split(r'[。！？\n]', content) if s.strip()]))
+    content_len = len(content)
+
+    if content_len >= 450 and japanese_chars >= 250 and sentence_count >= 8:
+        default_level = "M3"
+    elif content_len >= 220 and japanese_chars >= 120 and sentence_count >= 4:
+        default_level = "M2"
+    else:
+        default_level = "M1"
+
+    criteria_levels = {}
+    for criterion in rubric_data.get("rubric", {}).get("criteria", []):
+        criterion_id = str(criterion.get("id"))
+        criteria_levels[criterion_id] = default_level
+
+    result = _normalize_7_criteria_result({
+        "criteria_levels": criteria_levels,
+        "criteria_feedback": {
+            "1": "Chấm tạm bằng heuristic vì AI chưa khả dụng; giáo viên nên kiểm tra lại yêu cầu đề.",
+            "2": "Chấm tạm dựa trên độ dài, lượng chữ Nhật và số câu.",
+            "3": "Chưa phân tích sâu liên kết ý do AI không phản hồi.",
+            "4": "Chưa phân tích lỗi ngữ pháp chi tiết do AI không phản hồi.",
+            "5": "Chưa phân tích độ đa dạng từ vựng chi tiết do AI không phản hồi.",
+            "6": "Chưa rà soát chính tả/kanji chi tiết do AI không phản hồi.",
+            "7": "Chưa đánh giá sắc thái văn phong chi tiết do AI không phản hồi."
+        },
+        "feedback_text": "Hệ thống đã tạo điểm tạm theo rubric 7 tiêu chí vì dịch vụ AI chưa phản hồi ổn định. Giáo viên cần xem lại trước khi lưu điểm cuối cùng.",
+        "strengths": ["Bài đã được ghi nhận và có thể chấm theo rubric."],
+        "improvements": ["Kiểm tra lại từng tiêu chí trước khi dùng làm điểm chính thức."],
+        "corrected_text": content,
+        "error_reason": reason,
+        "detailed_analysis": {
+            "language": {
+                "issues": [reason] if reason else [],
+                "suggestions": ["Bấm AI chấm lại khi cấu hình GEMINI_API_KEY hoạt động hoặc chấm thủ công theo rubric."]
+            }
+        },
+        "grading_method": "heuristic_7_criteria_fallback"
+    }, rubric_data)
+
+    return result
 
 def generate_task(topic: str, level: str, num_questions: int) -> Dict[str, Any]:
     """
@@ -103,7 +238,7 @@ def _call_gemini_for_prompt(topic: str, level: str, num_questions: int) -> Optio
             raise ValueError("GEMINI_API_KEY not found")
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel(_get_gemini_model_name())
 
         # Plain text prompt (NOT JSON) - simple and reliable
         prompt = f"""Write a Japanese writing prompt for {level} level students.
@@ -411,7 +546,7 @@ def _call_gemini_for_single_question(genre: str, topic: str, level: str) -> Opti
             raise ValueError("GEMINI_API_KEY not found")
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel(_get_gemini_model_name())
 
         # Map genre to Japanese type
         genre_map = {
@@ -498,97 +633,125 @@ REQUIRED_POINTS:
 
 
 def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 'N3') -> Dict[str, Any]:
-    """
-    Grade student writing using Gemini + 7-criteria Japanese Rubric.
-    """
-    try:
-        # 1. Load rubric data (Giả định file JSON của bạn đã cập nhật 7 tiêu chí)
-        # Nếu chưa, Prompt dưới đây sẽ ghi đè định nghĩa cứng để đảm bảo chính xác.
-        rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
-        with open(rubric_path, 'r', encoding='utf-8') as f:
-            rubric_data = json.load(f)
-        
-        # Lấy thông tin bài tập (Giữ nguyên logic của bạn)
-        task_info = None
-        # ... (Phần tìm task_info giữ nguyên như code cũ của bạn) ...
+    """Grade student writing using Gemini + 7-criteria rubric (M4/M3/M2/M1 -> scores).
 
-        # 2. Xây dựng Prompt dựa trên file Rubrik final.docx
-        prompt = f"""Bạn là một chuyên gia chấm bài viết tiếng Nhật. Hãy chấm điểm bài viết sau dựa trên RUBRIK 7 TIÊU CHÍ.
+    Requirements:
+    - Must return JSON with:
+      - criteria_scores: keys "1".."7" mapping to exact scores: 15/11.25/7.5/3.75, except:
+        - criterion 4 uses 20/15/10/5
+        - criterion 6-7 use 10/7.5/5/2.5
+      - criteria_levels: keys "1".."7" mapping to level strings "M1".."M4" (or "M4-M1" variants)
+    - FE expects the same structure as Teacher screen.
+    """
+    rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
+    with open(rubric_path, 'r', encoding='utf-8') as f:
+        rubric_data = json.load(f)
+
+    try:
+        task_info = _find_writing_task(rubric_data, int(task_type_id))
+        criteria_json = json.dumps(rubric_data.get("rubric", {}).get("criteria", []), ensure_ascii=False, indent=2)
+        task_json = json.dumps(task_info or {"id": task_type_id}, ensure_ascii=False, indent=2)
+
+        prompt = f"""Bạn là một chuyên gia chấm bài viết tiếng Nhật.
+NHIỆM VỤ: Chấm bài viết theo ĐÚNG 7 TIÊU CHÍ GIỐNG MÀ GIÁO VIÊN ĐANG DÙNG.
+
 
 THÔNG TIN BÀI TẬP:
-- Task ID: {task_type_id}
-- Chủ đề: {task_info.get('title', 'N/A')}
 - Cấp độ: {difficulty}
-- Nội dung học sinh: 
+- Task:
+{task_json}
+- Nội dung học sinh:
 ---
 {content}
 ---
 
-RUBRIK CHẤM ĐIỂM (Thang điểm 100):
-1. Hoàn thành yêu cầu đề (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
-2. Nội dung & phát triển ý (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
-3. Bố cục & mạch lạc (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
-4. Ngữ pháp & cấu trúc (20đ): M4(20), M3(15), M2(10), M1(5)
-5. Từ vựng (15đ): M4(15), M3(11.25), M2(7.5), M1(3.75)
-6. Chữ viết & chính tả (10đ): M4(10), M3(7.5), M2(5), M1(2.5)
-7. Văn phong & ngữ dụng (10đ): M4(10), M3(7.5), M2(5), M1(2.5)
+RUBRIC CHÍNH THỨC (Tổng 100 điểm):
+{criteria_json}
 
-QUY TẮC CHẤM:
-- Với mỗi tiêu chí, hãy chọn mức (M1 đến M4) dựa trên mô tả trong rubrik.
-- Điểm số phải tương ứng với mức đã chọn (Ví dụ: Tiêu chí 1 nếu chọn M3 thì điểm là 11.25).
-- Tổng điểm là tổng của 7 tiêu chí.
+QUY TẮC CHẤM QUAN TRỌNG:
+- Bắt buộc chọn Mức cho từng tiêu chí: chỉ được là M4/M3/M2/M1.
+- Điểm trong criteria_scores PHẢI LÀ GIÁ TRỊ TƯƠNG ỨNG ĐÚNG với mức đã chọn trong rubric.
+- total_score = tổng 7 tiêu chí (các giá trị bắt buộc).
+- grade tính theo tổng điểm (A/B/C/D/F) theo hệ thống hiện tại:
+  - A: >=90, B: >=80, C: >=70, D: >=60, F: <60.
 
-YÊU CẦU ĐẦU RA JSON (Strictly valid JSON):
+YÊU CẦU OUTPUT (Strictly valid JSON, KHÔNG thêm bất kỳ text nào ngoài JSON):
 {{
   "criteria_scores": {{
-    "1": float, "2": float, "3": float, "4": float, "5": float, "6": float, "7": float
+    "1": 15.0,
+    "2": 15.0,
+    "3": 15.0,
+    "4": 20.0,
+    "5": 15.0,
+    "6": 10.0,
+    "7": 10.0
   }},
   "criteria_levels": {{
-    "1": "M1-M4", "2": "M1-M4", "3": "M1-M4", "4": "M1-M4", "5": "M1-M4", "6": "M1-M4", "7": "M1-M4"
+    "1": "M4",
+    "2": "M3",
+    "3": "M2",
+    "4": "M1",
+    "5": "M4",
+    "6": "M3",
+    "7": "M2"
   }},
-  "total_score": float,
+  "total_score": 100.0,
+  "overall_score": 100.0,
   "grade": "A/B/C/D/F",
   "feedback_text": "Đánh giá tổng quan bằng Tiếng Việt",
-  "strengths": ["Liệt kê ưu điểm bằng Tiếng Việt"],
-  "improvements": ["Liệt kê điểm cần cải thiện bằng Tiếng Việt"],
+  "strengths": ["..."],
+  "improvements": ["..."],
+  "corrected_text": "Viết lại toàn bộ bài bằng tiếng Nhật tự nhiên hơn, sửa lỗi ngữ pháp/từ vựng/chính tả nhưng giữ đúng ý chính của học sinh",
+  "criteria_feedback": {{
+    "1": "Nhận xét ngắn cho tiêu chí 1",
+    "2": "Nhận xét ngắn cho tiêu chí 2",
+    "3": "Nhận xét ngắn cho tiêu chí 3",
+    "4": "Nhận xét ngắn cho tiêu chí 4",
+    "5": "Nhận xét ngắn cho tiêu chí 5",
+    "6": "Nhận xét ngắn cho tiêu chí 6",
+    "7": "Nhận xét ngắn cho tiêu chí 7"
+  }},
   "detailed_analysis": {{
-    "language": {{ "issues": ["Lỗi cụ thể về từ vựng/ngữ pháp"], "suggestions": ["Cách sửa"] }},
-    "kanji_orthography": {{ "feedback": "Nhận xét về chữ viết, Kanji, chính tả" }},
-    "style_usage": {{ "feedback": "Nhận xét về văn phong (Thể từ điển/Lịch sự)" }}
-  }}
+    "language": {{"issues": ["..."], "suggestions": ["..."]}},
+    "kanji_orthography": {{"feedback": "..."}},
+    "style_usage": {{"feedback": "..."}}
+  }},
+  "grading_method": "ai_7_criteria_gemini"
 }}
-LƯU Ý: Phản hồi hoàn toàn bằng Tiếng Việt. Không thêm văn bản ngoài JSON.
+
+LƯU Ý:
+- Phản hồi hoàn toàn bằng Tiếng Việt ở các trường text/mảng.
+- Đảm bảo JSON hợp lệ.
 """
 
-        # 3. Gọi Gemini API (Sử dụng Model mới nhất)
         API_KEY = os.getenv('GEMINI_API_KEY')
+        if not API_KEY:
+            raise ValueError("GEMINI_API_KEY not found")
+
         genai.configure(api_key=API_KEY)
-        
-        # Khuyến khích dùng gemini-1.5-pro hoặc flash cho việc chấm điểm cần độ chính xác cao
+
         model = genai.GenerativeModel(
-            'gemini-1.5-flash', 
+            _get_gemini_model_name(),
             generation_config={
-                'temperature': 0.1, # Giảm Temp để kết quả chấm điểm ổn định hơn
-                'response_mime_type': "application/json"
+                'temperature': 0.1
             }
         )
         
         response = model.generate_content(prompt)
         raw_text = response.text.strip()
+        if raw_text.startswith("```"):
+            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+            raw_text = re.sub(r"\s*```$", "", raw_text).strip()
         
-        # 4. Xử lý kết quả
         result = json.loads(raw_text, strict=False)
-        
-        # Đồng bộ key cho Frontend
-        result['overall_score'] = round(result.get('total_score', 0), 1)
-        
-        return result
+        _log_ai_grading_result('raw', result, raw_text=raw_text)
+        normalized_result = _normalize_7_criteria_result(result, rubric_data)
+        _log_ai_grading_result('normalized', normalized_result)
+        return normalized_result
 
     except Exception as e:
         import traceback
         print(f"❌ Grading error: {traceback.format_exc()}")
-        return {
-            "feedback_text": "Lỗi hệ thống khi phân tích bài viết.",
-            "overall_score": 0,
-            "criteria_scores": {str(i): 0 for i in range(1, 8)}
-        }
+        fallback_result = _fallback_7criteria_feedback(content, rubric_data, str(e))
+        _log_ai_grading_result('fallback', fallback_result)
+        return fallback_result

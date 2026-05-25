@@ -17,8 +17,8 @@ def generate_ai_feedback(content: str, task=None, difficulty: str = 'N3') -> Dic
         if task and task.task_type_id is not None:
             print("[AI-FEEDBACK] Using GEMINI RUBRIC (task_type_id)")
             try:
-                feedback = grade_writing_submission(task.task_type_id, content)
-                feedback['grading_method'] = 'gemini_rubric'
+                feedback = grade_writing_submission(task.task_type_id, content, difficulty=difficulty)
+                feedback['grading_method'] = feedback.get('grading_method') or 'gemini_rubric'
                 feedback['overall_score'] = feedback.get('total_score') or feedback.get('overall_score', 0)
                 print(f"[AI-FEEDBACK] ✅ GEMINI success: {feedback.get('overall_score', 0)}")
                 return _standardize_snake_case(feedback)
@@ -99,12 +99,7 @@ def _calculate_heuristic_score(content: str, difficulty: str = 'N3') -> Dict[str
         "feedback_text": feedback_text.strip(),
         "overall_score": overall_score,
         "grade": grade,
-        "criteria_scores": {
-            "1": round(overall_score * 0.25, 1),
-            "2": round(overall_score * 0.25, 1),
-            "3": round(overall_score * 0.25, 1),
-            "4": round(overall_score * 0.25, 1)
-        },
+        "criteria_scores": _heuristic_7_criteria_scores(overall_score),
         "strengths": strengths,
         "improvements": improvements,
         "action_plan": [
@@ -120,6 +115,18 @@ def _calculate_heuristic_score(content: str, difficulty: str = 'N3') -> Dict[str
         ],
         "detailed_analysis": {}
     }
+
+def _heuristic_7_criteria_scores(overall_score: float) -> Dict[str, float]:
+    weights = {
+        "1": 0.15,
+        "2": 0.15,
+        "3": 0.15,
+        "4": 0.20,
+        "5": 0.15,
+        "6": 0.10,
+        "7": 0.10,
+    }
+    return {criterion_id: round(overall_score * weight, 1) for criterion_id, weight in weights.items()}
 
 def _standardize_snake_case(feedback: Dict[str, Any]) -> Dict[str, Any]:
     # \"\"\"
@@ -151,8 +158,7 @@ def _get_error_feedback() -> Dict[str, Any]:
         "action_plan": ["Please try again later"],
         "practice_exercises": [],
         "detailed_analysis": {},
-        "criteria_scores": {"1": 0, "2": 0, "3": 0, "4": 0},
+        "criteria_scores": {str(i): 0 for i in range(1, 8)},
         "strengths": [],
         "improvements": []
     }
-

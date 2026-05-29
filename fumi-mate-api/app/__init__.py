@@ -28,7 +28,8 @@ def create_app():
     # ===== JWT CUSTOM CALLBACK =====
     @jwt.user_identity_loader
     def user_identity_lookup(user):
-        print("--- [DEBUG] TẠO TOKEN CHO USER_ID:", user.id)
+        if os.getenv('DEBUG_AUTH_LOGS', '').strip().lower() in ('1', 'true', 'yes'):
+            print("--- [DEBUG] TẠO TOKEN CHO USER_ID:", user.id)
         # BẮT BUỘC CHỈ TRẢ VỀ STRING ĐỂ KHÔNG BỊ LỖI 422
         return str(user.id) 
     
@@ -40,7 +41,8 @@ def create_app():
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
         identity = jwt_data["sub"]
-        print("--- [DEBUG] CALL API: GIẢI MÃ TOKEN ID LÀ:", identity)
+        if os.getenv('DEBUG_AUTH_LOGS', '').strip().lower() in ('1', 'true', 'yes'):
+            print("--- [DEBUG] CALL API: GIẢI MÃ TOKEN ID LÀ:", identity)
         from app.models.user import User
         return User.query.get(int(identity))
 

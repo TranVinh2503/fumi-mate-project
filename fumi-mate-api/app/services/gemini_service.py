@@ -7,6 +7,7 @@ import time
 import threading
 import hashlib
 import re
+import signal
 # Rate limiting for free tier
 from pathlib import Path
 _rate_limit_lock = threading.Lock()
@@ -18,9 +19,36 @@ load_dotenv()
 _task_cache = {}
 
 DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+DEFAULT_GEMINI_REQUEST_TIMEOUT_SECONDS = 20
 
 def _get_gemini_model_name() -> str:
     return os.getenv('GEMINI_MODEL', DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
+
+def _get_gemini_request_timeout_seconds() -> float:
+    raw_timeout = os.getenv('GEMINI_REQUEST_TIMEOUT_SECONDS', str(DEFAULT_GEMINI_REQUEST_TIMEOUT_SECONDS)).strip()
+    try:
+        timeout = float(raw_timeout)
+    except ValueError:
+        timeout = DEFAULT_GEMINI_REQUEST_TIMEOUT_SECONDS
+    return max(1.0, timeout)
+
+def _generate_content_with_timeout(model, prompt, **kwargs):
+    timeout = _get_gemini_request_timeout_seconds()
+    print(f"[GEMINI] model={_get_gemini_model_name()} timeout={timeout}s")
+    if threading.current_thread() is not threading.main_thread():
+        return model.generate_content(prompt, **kwargs)
+
+    def _handle_timeout(signum, frame):
+        raise TimeoutError(f"Gemini request exceeded {timeout}s")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout)
+    try:
+        return model.generate_content(prompt, **kwargs)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 def _log_ai_grading_result(label: str, data: Dict[str, Any], raw_text: Optional[str] = None) -> None:
     print(f"[AI-GRADING:{label}] method={data.get('grading_method')} total={data.get('total_score')} overall={data.get('overall_score')} grade={data.get('grade')}")
@@ -255,7 +283,8 @@ Example:
 
         print(f"🔄 Calling Gemini API for plain text prompt...")
         
-        response = model.generate_content(
+        response = _generate_content_with_timeout(
+            model,
             prompt,
             generation_config={
                 'temperature': 0.7,
@@ -589,7 +618,8 @@ REQUIRED_POINTS:
 
         print(f"🔄 Calling Gemini API for single question...")
         
-        response = model.generate_content(
+        response = _generate_content_with_timeout(
+            model,
             prompt,
             generation_config={
                 'temperature': 0.8,
@@ -733,11 +763,12 @@ LƯU Ý:
         model = genai.GenerativeModel(
             _get_gemini_model_name(),
             generation_config={
-                'temperature': 0.1
+                'temperature': 0.1,
+                'max_output_tokens': 4096
             }
         )
         
-        response = model.generate_content(prompt)
+        response = _generate_content_with_timeout(model, prompt)
         raw_text = response.text.strip()
         if raw_text.startswith("```"):
             raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)

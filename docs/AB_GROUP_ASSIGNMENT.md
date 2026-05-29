@@ -133,6 +133,7 @@ Danh sách bài nộp dùng trạng thái đã gửi kết quả để hiển th
 ## Lưu Ý Deploy
 
 - Cần cấu hình `GEMINI_API_KEY` và `GEMINI_MODEL` trong môi trường deploy.
+- Nên cấu hình `GEMINI_REQUEST_TIMEOUT_SECONDS=20` hoặc thấp hơn timeout của Gunicorn để lỗi Gemini trả về có kiểm soát thay vì làm worker timeout.
 - Nếu AI trả lỗi quota/API key/model, hệ thống có thể sinh fallback. Không dùng fallback làm điểm chính thức nếu chưa kiểm tra lại.
 - Trước khi commit/deploy nên chạy:
 

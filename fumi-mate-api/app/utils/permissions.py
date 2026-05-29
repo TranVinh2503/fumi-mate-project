@@ -1,6 +1,10 @@
 from functools import wraps
+import os
 from flask import request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
+
+def _debug_auth_logs_enabled():
+    return os.getenv('DEBUG_AUTH_LOGS', '').strip().lower() in ('1', 'true', 'yes')
 
 def role_required(roles):
     def decorator(f):
@@ -10,26 +14,24 @@ def role_required(roles):
                 return "", 200
             
             try:
-                # Check Authorization header
-                auth_header = request.headers.get('Authorization')
-                print(f"DEBUG AUTH HEADER: {auth_header}")
-                
                 verify_jwt_in_request()
                 
                 claims = get_jwt()
                 user_role = claims.get("role")
                 user_identity = get_jwt_identity()
                 
-                print(f"DEBUG CHECK QUYỀN: Yêu cầu quyền {roles}, User identity: {user_identity}, User đang có quyền [{user_role}]")
+                if _debug_auth_logs_enabled():
+                    print(f"DEBUG CHECK QUYỀN: Yêu cầu quyền {roles}, User identity: {user_identity}, User đang có quyền [{user_role}]")
 
                 if str(user_role).strip().lower() not in [str(r).strip().lower() for r in (roles if isinstance(roles, list) else [roles])]:
                     return jsonify({"error": f"Permission denied. Required one of {roles}, got: {user_role}"}), 403
 
                 return f(*args, **kwargs)
             except Exception as e:
-                print(f"DEBUG JWT ERROR: {str(e)}")
-                import traceback
-                traceback.print_exc()
+                if _debug_auth_logs_enabled():
+                    print(f"DEBUG JWT ERROR: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
                 return jsonify({"error": "Lỗi xác thực Token: " + str(e)}), 401
 
         return wrapper

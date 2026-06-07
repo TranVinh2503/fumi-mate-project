@@ -11,10 +11,12 @@ from app.models.task import Task, TaskQuestion
 from app.models.question_bank import QuestionBank
 from app.models.user import User
 from app.models.submission import Submission
+from app.models.ai_grading_result import AIGradingResult
 from app.extensions import db
 from app.utils.permissions import role_required
 from app.services.gemini_service import grade_writing_submission
 from app.ai_services import generate_ai_feedback
+from app.services.openai_service import grade_writing_submission_openai
 
 from werkzeug.utils import secure_filename
 import os
@@ -25,6 +27,76 @@ teacher_bp = Blueprint('teacher', __name__)
 def get_current_user_id():
     identity = get_jwt_identity()
     return identity.get("id") if isinstance(identity, dict) else identity
+
+
+def get_configured_ai_grading_providers():
+    raw_value = os.getenv('AI_GRADING_PROVIDERS', 'gemini,openai')
+    providers = []
+    for provider in raw_value.split(','):
+        provider = provider.strip().lower()
+        if provider in ('gemini', 'openai') and provider not in providers:
+            providers.append(provider)
+    return providers or ['gemini', 'openai']
+
+
+def parse_json_text(value, fallback=None):
+    if not value:
+        return fallback if fallback is not None else {}
+    try:
+        return json.loads(value)
+    except:
+        return fallback if fallback is not None else {}
+
+
+def serialize_ai_grading_result(result):
+    feedback = parse_json_text(result.feedback_json, {})
+    return {
+        'id': result.id,
+        'submission_id': result.submission_id,
+        'provider': result.provider,
+        'model': result.model,
+        'prompt_version': result.prompt_version,
+        'rubric_version': result.rubric_version,
+        'status': result.status,
+        'total_score': result.total_score,
+        'feedback': feedback,
+        'error_reason': result.error_reason,
+        'latency_ms': result.latency_ms,
+        'is_selected': result.is_selected,
+        'created_at': result.created_at.isoformat() if result.created_at else None,
+        'updated_at': result.updated_at.isoformat() if result.updated_at else None,
+    }
+
+
+def make_ai_grading_result(submission_id, provider, feedback_data, latency_ms=None):
+    raw_response = feedback_data.pop('_raw_response', None)
+    service_latency_ms = feedback_data.pop('_latency_ms', None)
+    status = 'succeeded'
+    grading_method = feedback_data.get('grading_method', '')
+    error_reason = feedback_data.get('error_reason')
+
+    if error_reason or 'fallback' in grading_method:
+        status = 'fallback'
+
+    if provider == 'gemini':
+        model_name = feedback_data.get('model') or os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+    else:
+        model_name = feedback_data.get('model') or os.getenv('OPENAI_MODEL', 'gpt-4.1-mini')
+
+    return AIGradingResult(
+        submission_id=submission_id,
+        provider=provider,
+        model=model_name,
+        prompt_version=feedback_data.get('prompt_version') or 'rubric_7criteria_v1',
+        rubric_version=feedback_data.get('rubric_version') or 'writing_rubric_2026_7criteria',
+        status=status,
+        total_score=float(feedback_data.get('overall_score', feedback_data.get('total_score', 0)) or 0),
+        feedback_json=json.dumps(feedback_data, ensure_ascii=False),
+        raw_response=raw_response,
+        error_reason=error_reason,
+        latency_ms=service_latency_ms or latency_ms,
+        is_selected=False,
+    )
 
 @teacher_bp.route('/students', methods=['GET'])
 @jwt_required()
@@ -367,6 +439,10 @@ def get_submission_detail(submission_id):
             'created_at': sub.created_at.isoformat() if sub.created_at else None,
             'updated_at': sub.updated_at.isoformat() if sub.updated_at else None,
             'word_file_path': sub.word_file_path,
+            'ai_grading_results': [
+                serialize_ai_grading_result(result)
+                for result in sorted(sub.ai_grading_results, key=lambda item: item.created_at or datetime.min, reverse=True)
+            ],
         }
         
         return jsonify({
@@ -530,16 +606,10 @@ def grade_submission(submission_id):
 @jwt_required()
 @role_required('teacher')
 def teacher_ai_grade_submission(submission_id):
-    """Teacher-triggered AI grading (separate from teacher manual grading).
+    """Teacher-triggered AI grading with multiple providers.
 
-    Writes ONLY:
-    - submission.ai_feedback
-    - submission.ai_score
-    - submission.status = 'ai_teacher_graded'
-
-    Does NOT touch:
-    - submission.teacher_score
-    - submission.teacher_feedback
+    Creates AIGradingResult rows for Gemini/OpenAI and keeps submission.ai_* as a preview/compatibility field.
+    The student-facing result is only published after teacher selects one result and calls publish-ai-grade.
     """
     try:
         user_id = get_current_user_id()
@@ -552,36 +622,93 @@ def teacher_ai_grade_submission(submission_id):
         if not task or task.created_by != int(user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
+        student = User.query.get(sub.student_id)
+        if student and student.experimental_group != 'variant':
+            return jsonify({'error': 'Chỉ nhóm AI mới được gọi AI chấm điểm.'}), 403
+
         # Choose difficulty fallback
         difficulty = getattr(task, 'difficulty', None) or 'N3'
 
-        ai_feedback_data = generate_ai_feedback(sub.content or '', task=task, difficulty=difficulty)
+        body = request.get_json(silent=True) or {}
+        requested_providers = body.get('providers') or get_configured_ai_grading_providers()
+        if isinstance(requested_providers, str):
+            requested_providers = [requested_providers]
 
-        sub.ai_feedback = json.dumps(ai_feedback_data, ensure_ascii=False)
-        sub.ai_score = float(ai_feedback_data.get('overall_score', ai_feedback_data.get('total_score', 0)) or 0)
+        providers = []
+        for provider in requested_providers:
+            provider = str(provider).strip().lower()
+            if provider in ('gemini', 'openai') and provider not in providers:
+                providers.append(provider)
+
+        if not providers:
+            return jsonify({'error': 'Không có AI provider hợp lệ. Dùng gemini/openai.'}), 400
+
+        created_results = []
+        preview_result = None
+
+        for provider in providers:
+            start_time = time.monotonic()
+            try:
+                if provider == 'gemini':
+                    feedback_data = generate_ai_feedback(sub.content or '', task=task, difficulty=difficulty)
+                    feedback_data['provider'] = 'gemini'
+                    feedback_data['model'] = feedback_data.get('model') or os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+                    feedback_data['prompt_version'] = feedback_data.get('prompt_version') or 'rubric_7criteria_v1'
+                    feedback_data['rubric_version'] = feedback_data.get('rubric_version') or 'writing_rubric_2026_7criteria'
+                else:
+                    feedback_data = grade_writing_submission_openai(task.task_type_id, sub.content or '', difficulty=difficulty)
+
+                latency_ms = int((time.monotonic() - start_time) * 1000)
+                result = make_ai_grading_result(sub.id, provider, feedback_data, latency_ms=latency_ms)
+            except Exception as provider_error:
+                latency_ms = int((time.monotonic() - start_time) * 1000)
+                result = AIGradingResult(
+                    submission_id=sub.id,
+                    provider=provider,
+                    model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash') if provider == 'gemini' else os.getenv('OPENAI_MODEL', 'gpt-4.1-mini'),
+                    prompt_version='rubric_7criteria_v1',
+                    rubric_version='writing_rubric_2026_7criteria',
+                    status='failed',
+                    total_score=None,
+                    feedback_json=None,
+                    raw_response=None,
+                    error_reason=str(provider_error),
+                    latency_ms=latency_ms,
+                    is_selected=False,
+                )
+
+            db.session.add(result)
+            db.session.flush()
+            created_results.append(result)
+
+            if result.status == 'succeeded' and preview_result is None:
+                preview_result = result
+
+        if preview_result is None:
+            preview_result = next((result for result in created_results if result.feedback_json), None)
+
+        if preview_result and preview_result.feedback_json:
+            preview_feedback = parse_json_text(preview_result.feedback_json, {})
+            sub.ai_feedback = json.dumps(preview_feedback, ensure_ascii=False)
+            sub.ai_score = float(preview_result.total_score or 0)
         sub.status = 'ai_teacher_graded'
         sub.updated_at = datetime.utcnow()
 
         db.session.commit()
 
-        grading_method = ai_feedback_data.get('grading_method', 'unknown')
-        is_fallback = grading_method == 'heuristic_7_criteria_fallback'
-        print(f"[TEACHER-AI-GRADE] submission_id={sub.id} task_id={task.id} student_id={sub.student_id} method={grading_method} score={sub.ai_score} fallback={is_fallback}")
-        print(f"[TEACHER-AI-GRADE] criteria_levels={json.dumps(ai_feedback_data.get('criteria_levels', {}), ensure_ascii=False)}")
-        print(f"[TEACHER-AI-GRADE] criteria_scores={json.dumps(ai_feedback_data.get('criteria_scores', {}), ensure_ascii=False)}")
-        print(f"[TEACHER-AI-GRADE] criteria_feedback={json.dumps(ai_feedback_data.get('criteria_feedback', {}), ensure_ascii=False)}")
-        if ai_feedback_data.get('error_reason'):
-            print(f"[TEACHER-AI-GRADE] error_reason={ai_feedback_data.get('error_reason')}")
+        serialized_results = [serialize_ai_grading_result(result) for result in created_results]
+        selected_preview = serialize_ai_grading_result(preview_result) if preview_result else None
+
+        print(f"[TEACHER-AI-GRADE] submission_id={sub.id} providers={providers} results={[item['status'] for item in serialized_results]}")
 
         return jsonify({
             'success': True,
-            'message': 'AI graded successfully (teacher trigger)' if not is_fallback else 'AI grading used fallback. Check error_reason before using this score.',
+            'message': 'AI grading completed. Teacher must select one result before publishing.',
             'submission_id': sub.id,
             'ai_score': sub.ai_score,
-            'ai_feedback': ai_feedback_data,
-            'grading_method': grading_method,
-            'is_fallback': is_fallback,
-            'error_reason': ai_feedback_data.get('error_reason'),
+            'ai_feedback': selected_preview['feedback'] if selected_preview else None,
+            'ai_grading_results': serialized_results,
+            'preview_result_id': selected_preview['id'] if selected_preview else None,
         }), 200
 
     except Exception as e:
@@ -595,7 +722,7 @@ def teacher_ai_grade_submission(submission_id):
 @jwt_required()
 @role_required('teacher')
 def publish_ai_grade_submission(submission_id):
-    """Publish AI grading result for variant group without teacher manual grading."""
+    """Publish selected AI grading result for variant group without teacher manual grading."""
     try:
         user_id = get_current_user_id()
 
@@ -611,8 +738,29 @@ def publish_ai_grade_submission(submission_id):
         if not student or student.experimental_group != 'variant':
             return jsonify({'error': 'Chỉ nhóm AI mới được gửi kết quả AI.'}), 403
 
-        if sub.ai_score is None or not sub.ai_feedback:
-            return jsonify({'error': 'Chưa có kết quả AI để gửi. Hãy bấm AI Grade trước.'}), 400
+        body = request.get_json(silent=True) or {}
+        selected_result_id = body.get('selected_result_id')
+
+        selected_result = None
+        if selected_result_id:
+            selected_result = AIGradingResult.query.filter_by(
+                id=int(selected_result_id),
+                submission_id=sub.id
+            ).first()
+            if not selected_result:
+                return jsonify({'error': 'Không tìm thấy kết quả AI đã chọn.'}), 404
+            if selected_result.status == 'failed' or not selected_result.feedback_json:
+                return jsonify({'error': 'Kết quả AI đã chọn bị lỗi, không thể gửi cho sinh viên.'}), 400
+
+            feedback_data = parse_json_text(selected_result.feedback_json, {})
+            for result in sub.ai_grading_results:
+                result.is_selected = result.id == selected_result.id
+
+            sub.ai_score = float(selected_result.total_score or feedback_data.get('overall_score', feedback_data.get('total_score', 0)) or 0)
+            sub.ai_feedback = json.dumps(feedback_data, ensure_ascii=False)
+        else:
+            if sub.ai_score is None or not sub.ai_feedback:
+                return jsonify({'error': 'Chưa có kết quả AI để gửi. Hãy bấm AI Grade trước.'}), 400
 
         sub.status = 'teacher_graded'
         sub.updated_at = datetime.utcnow()
@@ -624,6 +772,7 @@ def publish_ai_grade_submission(submission_id):
             'submission_id': sub.id,
             'status': sub.status,
             'ai_score': sub.ai_score,
+            'selected_result_id': selected_result.id if selected_result else None,
         }), 200
 
     except Exception as e:

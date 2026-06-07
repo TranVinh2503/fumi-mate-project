@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { API_ENDPOINTS } from '@/lib/apiConfig';
-import { Submission, TeacherFeedbackData } from '@/lib/types';
+import { AIGradingResult, Submission, TeacherFeedbackData } from '@/lib/types';
 
 type LevelKey = 'M4' | 'M3' | 'M2' | 'M1';
 
@@ -188,6 +188,8 @@ export default function TeacherGradeSubmissionPage() {
   // State cho AI grading
   const [aiLoading, setAiLoading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<any>(null);
+  const [aiResults, setAiResults] = useState<AIGradingResult[]>([]);
+  const [selectedAiResultId, setSelectedAiResultId] = useState<number | null>(null);
 
   // Khởi tạo State với giá trị mặc định sạch
   const [formData, setFormData] = useState<TeacherFeedbackData>({
@@ -245,6 +247,36 @@ export default function TeacherGradeSubmissionPage() {
     }).filter(Boolean).join('\n\n');
   };
 
+  const providerLabel = (provider: string) => {
+    if (provider === 'openai') return 'ChatGPT / OpenAI';
+    if (provider === 'gemini') return 'Gemini';
+    return provider;
+  };
+
+  const applyFeedbackToForm = (feedback: any, fallbackMethod = 'ai_generated') => {
+    if (!feedback) return;
+
+    const normalizedScores = normalizeCriteriaScores(feedback.criteria_scores);
+    setAiFeedback(feedback);
+    setFormData(prev => ({
+      ...prev,
+      overall_score: Number(feedback.overall_score || feedback.total_score) || 0,
+      grade: feedback.grade || prev.grade || '',
+      feedback_text: buildRubricFeedbackText(normalizedScores),
+      ai_summary: feedback.feedback_text || prev.ai_summary || '',
+      corrected_text: feedback.corrected_text || prev.corrected_text || '',
+      error_reason: feedback.error_reason || '',
+      criteria_scores: normalizedScores,
+      grading_method: feedback.grading_method || fallbackMethod
+    }));
+  };
+
+  const handleSelectAiResult = (result: AIGradingResult) => {
+    if (result.status === 'failed') return;
+    setSelectedAiResultId(result.id);
+    applyFeedbackToForm(result.feedback, `${result.provider}_generated`);
+  };
+
   const fetchSubmission = useCallback(async () => {
     const token = localStorage.getItem('access_token');
 
@@ -269,6 +301,7 @@ export default function TeacherGradeSubmissionPage() {
 
       const data = await response.json();
       const sub = data.submission;
+      const fetchedAiResults: AIGradingResult[] = sub?.ai_grading_results || [];
 
       console.group('📌 FETCH SUBMISSION DETAIL');
       console.log('submissionId:', submissionId);
@@ -285,12 +318,19 @@ export default function TeacherGradeSubmissionPage() {
       console.groupEnd();
 
       setSubmission(sub);
+      setAiResults(fetchedAiResults);
+
+      const selectedResult = fetchedAiResults.find(result => result.is_selected);
+      const firstUsableResult = fetchedAiResults.find(result => result.status === 'succeeded') ||
+        fetchedAiResults.find(result => result.status === 'fallback');
+      const defaultAiResult = selectedResult || firstUsableResult;
+      setSelectedAiResultId(defaultAiResult?.id || null);
 
       /**
        * Ưu tiên teacher_feedback nếu đã có.
        * Nếu chưa có teacher_feedback nhưng đã có ai_feedback thì preview kết quả AI.
        */
-      const feedbackSource = sub.teacher_feedback || sub.ai_feedback;
+      const feedbackSource = sub.teacher_feedback || sub.ai_feedback || defaultAiResult?.feedback;
 
       if (feedbackSource) {
         const parsed = parseFeedbackSource(feedbackSource);
@@ -304,22 +344,10 @@ export default function TeacherGradeSubmissionPage() {
         console.groupEnd();
 
         if (parsed) {
-          const normalizedScores = normalizeCriteriaScores(parsed.criteria_scores);
-
           if (sub.ai_feedback) {
             setAiFeedback(parseFeedbackSource(sub.ai_feedback));
           }
-
-          setFormData({
-            overall_score: Number(parsed.overall_score || parsed.total_score) || 0,
-            grade: parsed.grade || '',
-            feedback_text: buildRubricFeedbackText(normalizedScores),
-            ai_summary: parsed.ai_summary || parsed.feedback_text || '',
-            corrected_text: parsed.corrected_text || '',
-            error_reason: parsed.error_reason || '',
-            criteria_scores: normalizedScores,
-            grading_method: parsed.grading_method || (sub.teacher_feedback ? 'teacher_manual' : 'ai_generated')
-          });
+          applyFeedbackToForm(parsed, sub.teacher_feedback ? 'teacher_manual' : 'ai_generated');
         }
       }
     } catch (err) {
@@ -475,7 +503,7 @@ export default function TeacherGradeSubmissionPage() {
        * thì có thể đổi dòng dưới thành:
        * const url = API_ENDPOINTS.TEACHER_AI_GRADE_SUBMISSION(parseInt(submissionId));
        */
-      const url = `${API_ENDPOINTS.TEACHER_SUBMISSIONS}/${submissionId}/ai-grade`;
+      const url = API_ENDPOINTS.TEACHER_AI_GRADE_SUBMISSION(parseInt(submissionId));
 
       console.group('🚀 AI GRADE REQUEST');
       console.log('url:', url);
@@ -521,29 +549,21 @@ export default function TeacherGradeSubmissionPage() {
         throw new Error(data?.error || data?.message || 'Lỗi khi gọi AI chấm điểm');
       }
 
-      const feedback = data?.ai_feedback;
+      const freshResults: AIGradingResult[] = data?.ai_grading_results || [];
+      const previewResult = freshResults.find(result => result.id === data?.preview_result_id) ||
+        freshResults.find(result => result.status === 'succeeded') ||
+        freshResults.find(result => result.status === 'fallback');
+      const feedback = previewResult?.feedback || data?.ai_feedback;
 
       if (!feedback) {
         throw new Error('Response không có ai_feedback');
       }
 
-      const normalizedScores = normalizeCriteriaScores(feedback.criteria_scores);
+      setAiResults(prev => [...freshResults, ...prev]);
+      setSelectedAiResultId(previewResult?.id || null);
+      applyFeedbackToForm(feedback, data.grading_method || 'ai_generated');
 
-      setAiFeedback(feedback);
-
-      setFormData(prev => ({
-        ...prev,
-        overall_score: Number(feedback.overall_score || feedback.total_score || data.ai_score) || 0,
-        grade: feedback.grade || prev.grade || '',
-        feedback_text: buildRubricFeedbackText(normalizedScores),
-        ai_summary: feedback.feedback_text || prev.ai_summary || '',
-        corrected_text: feedback.corrected_text || prev.corrected_text || '',
-        error_reason: feedback.error_reason || '',
-        criteria_scores: normalizedScores,
-        grading_method: feedback.grading_method || data.grading_method || prev.grading_method
-      }));
-
-      setMessage('✅ AI đã chấm điểm xong. Hãy kiểm tra rồi bấm Gửi kết quả AI.');
+      setMessage('✅ AI đã chấm điểm xong. Hãy chọn Gemini hoặc ChatGPT rồi bấm Gửi kết quả AI.');
     } catch (err: any) {
       console.error('❌ AI grading error:', err);
       setMessage(`❌ Lỗi AI chấm điểm: ${err.message}`);
@@ -566,7 +586,8 @@ export default function TeacherGradeSubmissionPage() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ selected_result_id: selectedAiResultId })
       });
 
       const rawText = await response.text();
@@ -653,7 +674,7 @@ export default function TeacherGradeSubmissionPage() {
   const isGraded = submission.status === 'teacher_graded';
   const isVariantGroup = submission.experimental_group === 'variant';
   const canEditManualGrade = !isGraded && !isVariantGroup;
-  const canPublishAIGrade = !isGraded && isVariantGroup && Boolean(submission.ai_score ?? formData.overall_score);
+  const canPublishAIGrade = !isGraded && isVariantGroup && Boolean(selectedAiResultId || submission.ai_score || formData.overall_score);
 
   return (
     <section className="container mx-auto p-8 max-w-6xl space-y-8">
@@ -828,6 +849,84 @@ export default function TeacherGradeSubmissionPage() {
             </div>
 
             <div className="mt-6 space-y-3 text-left">
+              {isVariantGroup && aiResults.length > 0 && (
+                <div className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-purple-800">
+                        Kết quả AI để chọn gửi
+                      </p>
+                      <p className="text-xs text-purple-500">
+                        Sinh viên chỉ nhìn thấy kết quả được chọn sau khi giáo viên gửi.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-purple-600">
+                      {aiResults.length} bản
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {aiResults.map(result => {
+                      const isSelected = selectedAiResultId === result.id;
+                      const isFailed = result.status === 'failed';
+
+                      return (
+                        <button
+                          key={result.id}
+                          type="button"
+                          disabled={isFailed || isGraded}
+                          onClick={() => handleSelectAiResult(result)}
+                          className={`w-full rounded-xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed ${
+                            isSelected
+                              ? 'border-purple-500 bg-white shadow-sm'
+                              : 'border-white bg-white/70 hover:border-purple-200'
+                          } ${isFailed ? 'opacity-60' : ''}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-slate-800">
+                                {providerLabel(result.provider)}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {result.model || 'model chưa rõ'}
+                                {result.latency_ms ? ` · ${result.latency_ms}ms` : ''}
+                              </p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-xl font-black text-purple-700">
+                                {result.total_score ?? '—'}
+                              </p>
+                              <p className={`text-[10px] font-bold uppercase ${
+                                result.status === 'succeeded'
+                                  ? 'text-green-600'
+                                  : result.status === 'fallback'
+                                    ? 'text-amber-600'
+                                    : 'text-red-600'
+                              }`}>
+                                {result.status}
+                              </p>
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <p className="mt-3 rounded-lg bg-purple-100 px-3 py-2 text-xs font-bold text-purple-700">
+                              Đang chọn kết quả này để gửi cho sinh viên
+                            </p>
+                          )}
+
+                          {result.error_reason && (
+                            <p className="mt-3 whitespace-pre-wrap rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                              {result.error_reason}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <span className="font-bold">Phương thức chấm:</span>{' '}
                 {formData.grading_method || 'unknown'}

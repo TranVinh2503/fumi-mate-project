@@ -96,12 +96,30 @@ export interface Submission {
   updated_at?: string;
   word_file_path?: string;
   word_file_url?: string;
+  ai_grading_results?: AIGradingResult[];
 
 }
 
 export interface SubmissionWithDetails extends Submission {
   student_name: string;
   task_title: string;
+}
+
+export interface AIGradingResult {
+  id: number;
+  submission_id: number;
+  provider: 'gemini' | 'openai' | string;
+  model?: string | null;
+  prompt_version?: string | null;
+  rubric_version?: string | null;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'fallback' | string;
+  total_score?: number | null;
+  feedback?: FeedbackData | Record<string, any>;
+  error_reason?: string | null;
+  latency_ms?: number | null;
+  is_selected?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 // API Response Types
@@ -153,6 +171,8 @@ export type GradingMethod =
   | 'ai_generated'
   | 'gemini_rubric'
   | 'ai_7_criteria_gemini'
+  | 'openai_7_criteria'
+  | 'openai_7_criteria_fallback'
   | 'heuristic_7_criteria_fallback'
   | 'heuristic_dynamic'
   | 'ai_heuristic';

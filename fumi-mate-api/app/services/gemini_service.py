@@ -20,6 +20,7 @@ _task_cache = {}
 
 DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
 DEFAULT_GEMINI_REQUEST_TIMEOUT_SECONDS = 20
+DEFAULT_GEMINI_GRADING_MAX_OUTPUT_TOKENS = 4096
 
 def _get_gemini_model_name() -> str:
     return os.getenv('GEMINI_MODEL', DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
@@ -31,6 +32,14 @@ def _get_gemini_request_timeout_seconds() -> float:
     except ValueError:
         timeout = DEFAULT_GEMINI_REQUEST_TIMEOUT_SECONDS
     return max(1.0, timeout)
+
+def _get_gemini_grading_max_output_tokens() -> int:
+    raw_tokens = os.getenv('GEMINI_GRADING_MAX_OUTPUT_TOKENS', str(DEFAULT_GEMINI_GRADING_MAX_OUTPUT_TOKENS)).strip()
+    try:
+        tokens = int(raw_tokens)
+    except ValueError:
+        tokens = DEFAULT_GEMINI_GRADING_MAX_OUTPUT_TOKENS
+    return max(1024, tokens)
 
 def _generate_content_with_timeout(model, prompt, **kwargs):
     timeout = _get_gemini_request_timeout_seconds()
@@ -50,6 +59,14 @@ def _generate_content_with_timeout(model, prompt, **kwargs):
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
 
+def _log_gemini_finish_reason(response) -> None:
+    try:
+        candidate = response.candidates[0] if response.candidates else None
+        if candidate:
+            print(f"[GEMINI] finish_reason={getattr(candidate, 'finish_reason', None)}")
+    except Exception:
+        pass
+
 def _log_ai_grading_result(label: str, data: Dict[str, Any], raw_text: Optional[str] = None) -> None:
     print(f"[AI-GRADING:{label}] method={data.get('grading_method')} total={data.get('total_score')} overall={data.get('overall_score')} grade={data.get('grade')}")
     print(f"[AI-GRADING:{label}] criteria_levels={json.dumps(data.get('criteria_levels', {}), ensure_ascii=False)}")
@@ -60,6 +77,89 @@ def _log_ai_grading_result(label: str, data: Dict[str, Any], raw_text: Optional[
         print(f"[AI-GRADING:{label}] error_reason={data.get('error_reason')}")
     if raw_text is not None:
         print(f"[AI-GRADING:{label}] raw_response_preview={raw_text[:1500]}")
+
+def _extract_json_object(raw_text: str) -> str:
+    text = (raw_text or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text).strip()
+
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("AI response did not contain a JSON object")
+
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+
+    raise ValueError("AI response JSON object was not closed")
+
+def _parse_model_json(raw_text: str) -> Dict[str, Any]:
+    json_text = _extract_json_object(raw_text)
+    try:
+        return json.loads(json_text, strict=False)
+    except json.JSONDecodeError as error:
+        compact_text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", json_text)
+        try:
+            return json.loads(compact_text, strict=False)
+        except json.JSONDecodeError:
+            raise error
+
+def _truncate_text(value: Any, max_chars: int) -> str:
+    text = str(value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "..."
+
+def _limit_string_list(values: Any, max_items: int = 3, max_chars: int = 120) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    return [_truncate_text(item, max_chars) for item in values[:max_items]]
+
+def _compact_grading_feedback(result: Dict[str, Any], original_content: str = "") -> Dict[str, Any]:
+    result["feedback_text"] = _truncate_text(result.get("feedback_text"), 360)
+    result["strengths"] = _limit_string_list(result.get("strengths"), max_items=3, max_chars=120)
+    result["improvements"] = _limit_string_list(result.get("improvements"), max_items=3, max_chars=120)
+    result["corrected_text"] = _truncate_text(result.get("corrected_text"), max(len(original_content or "") + 250, 900))
+
+    criteria_feedback = result.get("criteria_feedback")
+    if isinstance(criteria_feedback, dict):
+        result["criteria_feedback"] = {
+            str(key): _truncate_text(value, 180)
+            for key, value in criteria_feedback.items()
+        }
+
+    detailed_analysis = result.get("detailed_analysis")
+    if isinstance(detailed_analysis, dict):
+        for section_value in detailed_analysis.values():
+            if not isinstance(section_value, dict):
+                continue
+            for key, value in list(section_value.items()):
+                if isinstance(value, list):
+                    section_value[key] = _limit_string_list(value, max_items=3, max_chars=120)
+                elif isinstance(value, str):
+                    section_value[key] = _truncate_text(value, 180)
+
+    return result
 
 # Predefined vocabulary and grammar hints for each topic
 TOPIC_HINTS = {
@@ -704,6 +804,17 @@ QUY TẮC CHẤM QUAN TRỌNG:
 - total_score = tổng 7 tiêu chí (các giá trị bắt buộc).
 - grade tính theo tổng điểm (A/B/C/D/F) theo hệ thống hiện tại:
   - A: >=90, B: >=80, C: >=70, D: >=60, F: <60.
+- M4 là mức xuất sắc, chỉ dùng khi tiêu chí đó gần như không có lỗi và thể hiện vượt yêu cầu.
+- Không cho 100 điểm trừ khi bài hoàn toàn đáp ứng đề, phát triển ý rất tốt, gần như không lỗi ngữ pháp/từ vựng/chính tả và văn phong rất tự nhiên.
+- Bài có nhiều lỗi tiếng Nhật, lặp ý, sai văn phong, thiếu ý hoặc diễn đạt chưa tự nhiên thường phải nằm ở M3/M2/M1 tùy tiêu chí.
+- Nếu còn phân vân giữa hai mức, hãy chọn mức thấp hơn để đảm bảo nhất quán nghiên cứu.
+- TỰ CÂN ĐỐI ĐỘ DÀI OUTPUT để JSON không bị cắt:
+  - feedback_text tối đa 2 câu ngắn.
+  - strengths tối đa 3 ý, mỗi ý dưới 18 từ.
+  - improvements tối đa 3 ý, mỗi ý dưới 18 từ.
+  - criteria_feedback mỗi tiêu chí đúng 1 câu ngắn, dưới 25 từ.
+  - detailed_analysis mỗi trường chỉ 1 câu/ngắn gọn, không liệt kê dài.
+  - corrected_text chỉ viết lại bài của học sinh ở độ dài tương đương hoặc ngắn hơn bài gốc; không mở rộng ý mới, không thêm ví dụ mới.
 
 YÊU CẦU OUTPUT (Strictly valid JSON, KHÔNG thêm bất kỳ text nào ngoài JSON):
 {{
@@ -764,19 +875,18 @@ LƯU Ý:
             _get_gemini_model_name(),
             generation_config={
                 'temperature': 0.1,
-                'max_output_tokens': 4096
+                'max_output_tokens': _get_gemini_grading_max_output_tokens()
             }
         )
         
         response = _generate_content_with_timeout(model, prompt)
+        _log_gemini_finish_reason(response)
         raw_text = response.text.strip()
-        if raw_text.startswith("```"):
-            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-            raw_text = re.sub(r"\s*```$", "", raw_text).strip()
-        
-        result = json.loads(raw_text, strict=False)
+        print(f"[GEMINI] raw_text_length={len(raw_text)}")
+        result = _parse_model_json(raw_text)
         _log_ai_grading_result('raw', result, raw_text=raw_text)
         normalized_result = _normalize_7_criteria_result(result, rubric_data)
+        normalized_result = _compact_grading_feedback(normalized_result, content)
         _log_ai_grading_result('normalized', normalized_result)
         return normalized_result
 

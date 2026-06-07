@@ -26,3 +26,9 @@ class Submission(db.Model):
     
     # Relationship to student user for experimental_group
     student = db.relationship('User', foreign_keys=[student_id], backref='submissions')
+    ai_grading_results = db.relationship(
+        'AIGradingResult',
+        back_populates='submission',
+        cascade='all, delete-orphan',
+        order_by='AIGradingResult.created_at.desc()'
+    )

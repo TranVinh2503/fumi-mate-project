@@ -39,6 +39,23 @@ def get_configured_ai_grading_providers():
     return providers or ['gemini', 'openai']
 
 
+def make_failed_ai_result(submission_id, provider, error_reason, latency_ms=0):
+    return AIGradingResult(
+        submission_id=submission_id,
+        provider=provider,
+        model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash') if provider == 'gemini' else os.getenv('OPENAI_MODEL', 'gpt-4.1-mini'),
+        prompt_version='rubric_7criteria_v1',
+        rubric_version='writing_rubric_2026_7criteria',
+        status='failed',
+        total_score=None,
+        feedback_json=None,
+        raw_response=None,
+        error_reason=error_reason,
+        latency_ms=latency_ms,
+        is_selected=False,
+    )
+
+
 def parse_json_text(value, fallback=None):
     if not value:
         return fallback if fallback is not None else {}
@@ -656,26 +673,17 @@ def teacher_ai_grade_submission(submission_id):
                     feedback_data['prompt_version'] = feedback_data.get('prompt_version') or 'rubric_7criteria_v1'
                     feedback_data['rubric_version'] = feedback_data.get('rubric_version') or 'writing_rubric_2026_7criteria'
                 else:
-                    feedback_data = grade_writing_submission_openai(task.task_type_id, sub.content or '', difficulty=difficulty)
+                    feedback_data = grade_writing_submission_openai(
+                        task.task_type_id,
+                        sub.content or '',
+                        difficulty=difficulty
+                    )
 
                 latency_ms = int((time.monotonic() - start_time) * 1000)
                 result = make_ai_grading_result(sub.id, provider, feedback_data, latency_ms=latency_ms)
             except Exception as provider_error:
                 latency_ms = int((time.monotonic() - start_time) * 1000)
-                result = AIGradingResult(
-                    submission_id=sub.id,
-                    provider=provider,
-                    model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash') if provider == 'gemini' else os.getenv('OPENAI_MODEL', 'gpt-4.1-mini'),
-                    prompt_version='rubric_7criteria_v1',
-                    rubric_version='writing_rubric_2026_7criteria',
-                    status='failed',
-                    total_score=None,
-                    feedback_json=None,
-                    raw_response=None,
-                    error_reason=str(provider_error),
-                    latency_ms=latency_ms,
-                    is_selected=False,
-                )
+                result = make_failed_ai_result(sub.id, provider, str(provider_error), latency_ms=latency_ms)
 
             db.session.add(result)
             db.session.flush()

@@ -188,7 +188,12 @@ def _extract_output_text(response_payload: Dict[str, Any]) -> str:
     raise ValueError("OpenAI response did not include output_text")
 
 
-def grade_writing_submission_openai(task_type_id: int, content: str, difficulty: str = 'N3') -> Dict[str, Any]:
+def grade_writing_submission_openai(
+    task_type_id: int,
+    content: str,
+    difficulty: str = 'N3',
+    timeout_seconds: Optional[float] = None
+) -> Dict[str, Any]:
     rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
     with open(rubric_path, 'r', encoding='utf-8') as f:
         rubric_data = json.load(f)
@@ -247,7 +252,8 @@ def grade_writing_submission_openai(task_type_id: int, content: str, difficulty:
             method="POST"
         )
 
-        timeout = _get_openai_timeout_seconds()
+        timeout = timeout_seconds if timeout_seconds is not None else _get_openai_timeout_seconds()
+        timeout = max(1.0, float(timeout))
         print(f"[OPENAI-GRADING] model={model_name} timeout={timeout}s")
         with urllib.request.urlopen(request, timeout=timeout) as response:
             response_payload = json.loads(response.read().decode("utf-8"))

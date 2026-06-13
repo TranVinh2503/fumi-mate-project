@@ -146,6 +146,7 @@ Danh sách bài nộp dùng trạng thái đã gửi kết quả để hiển th
 - `AI_GRADING_PROVIDERS` quyết định hệ thống gọi AI nào khi bấm `AI Grade`.
 - Dùng `AI_GRADING_PROVIDERS=openai` nếu chỉ muốn chấm bằng ChatGPT/OpenAI.
 - Dùng `AI_GRADING_PROVIDERS=gemini,openai` nếu muốn chấm bằng cả Gemini và ChatGPT/OpenAI để giáo viên chọn.
+- Nếu dùng cả Gemini và ChatGPT/OpenAI trong cùng request, nên tăng Gunicorn timeout vì backend sẽ gọi tuần tự các provider được cấu hình.
 - Nếu dùng ChatGPT/OpenAI, cần cấu hình `OPENAI_API_KEY`, `OPENAI_MODEL` và `OPENAI_REQUEST_TIMEOUT_SECONDS`.
 - Cần chạy migration để tạo bảng `ai_grading_result` trước khi dùng tính năng chấm nhiều AI.
 

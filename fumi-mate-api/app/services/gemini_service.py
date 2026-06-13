@@ -161,6 +161,37 @@ def _compact_grading_feedback(result: Dict[str, Any], original_content: str = ""
 
     return result
 
+def _salvage_partial_gemini_result(raw_text: str, rubric_data: Dict[str, Any], content: str, reason: str) -> Optional[Dict[str, Any]]:
+    criteria_match = re.search(r'"criteria_levels"\s*:\s*\{([^}]*)\}', raw_text or "", re.DOTALL)
+    if not criteria_match:
+        return None
+
+    levels = {}
+    for key, level in re.findall(r'"([1-7])"\s*:\s*"(M[1-4])"', criteria_match.group(1), flags=re.IGNORECASE):
+        levels[key] = level.upper()
+
+    if len(levels) < 7:
+        return None
+
+    criteria_feedback = {}
+    for criterion in rubric_data.get("rubric", {}).get("criteria", []):
+        criterion_id = str(criterion.get("id"))
+        level = levels.get(criterion_id, "M2")
+        level_desc = criterion.get("levels", {}).get(level, {}).get("desc") or criterion.get("descriptions", {}).get(level) or ""
+        criteria_feedback[criterion_id] = _truncate_text(level_desc or f"Gemini chọn mức {level}; cần giáo viên kiểm tra lại.", 160)
+
+    result = _normalize_7_criteria_result({
+        "criteria_levels": levels,
+        "criteria_feedback": criteria_feedback,
+        "feedback_text": "Gemini đã chọn được mức cho từng tiêu chí nhưng JSON bị cắt trước khi hoàn tất. Giáo viên nên kiểm tra lại nhận xét.",
+        "strengths": ["Có thể dùng mức điểm Gemini chọn làm tham khảo."],
+        "improvements": ["Kiểm tra lại nhận xét vì phản hồi Gemini bị cắt giữa chừng."],
+        "corrected_text": content,
+        "error_reason": reason,
+        "grading_method": "ai_7_criteria_gemini_partial"
+    }, rubric_data)
+    return _compact_grading_feedback(result, content)
+
 # Predefined vocabulary and grammar hints for each topic
 TOPIC_HINTS = {
     "letter": {
@@ -777,6 +808,8 @@ def grade_writing_submission(task_type_id: int, content: str, difficulty: str = 
     with open(rubric_path, 'r', encoding='utf-8') as f:
         rubric_data = json.load(f)
 
+    raw_text = ""
+
     try:
         task_info = _find_writing_task(rubric_data, int(task_type_id))
         criteria_json = json.dumps(rubric_data.get("rubric", {}).get("criteria", []), ensure_ascii=False, indent=2)
@@ -818,15 +851,6 @@ QUY TẮC CHẤM QUAN TRỌNG:
 
 YÊU CẦU OUTPUT (Strictly valid JSON, KHÔNG thêm bất kỳ text nào ngoài JSON):
 {{
-  "criteria_scores": {{
-    "1": 15.0,
-    "2": 15.0,
-    "3": 15.0,
-    "4": 20.0,
-    "5": 15.0,
-    "6": 10.0,
-    "7": 10.0
-  }},
   "criteria_levels": {{
     "1": "M4",
     "2": "M3",
@@ -836,32 +860,26 @@ YÊU CẦU OUTPUT (Strictly valid JSON, KHÔNG thêm bất kỳ text nào ngoài
     "6": "M3",
     "7": "M2"
   }},
-  "total_score": 100.0,
-  "overall_score": 100.0,
-  "grade": "A/B/C/D/F",
-  "feedback_text": "Đánh giá tổng quan bằng Tiếng Việt",
-  "strengths": ["..."],
-  "improvements": ["..."],
-  "corrected_text": "Viết lại toàn bộ bài bằng tiếng Nhật tự nhiên hơn, sửa lỗi ngữ pháp/từ vựng/chính tả nhưng giữ đúng ý chính của học sinh",
+  "feedback_text": "Tối đa 2 câu ngắn bằng Tiếng Việt",
+  "strengths": ["Tối đa 3 ý rất ngắn"],
+  "improvements": ["Tối đa 3 ý rất ngắn"],
   "criteria_feedback": {{
-    "1": "Nhận xét ngắn cho tiêu chí 1",
-    "2": "Nhận xét ngắn cho tiêu chí 2",
-    "3": "Nhận xét ngắn cho tiêu chí 3",
-    "4": "Nhận xét ngắn cho tiêu chí 4",
-    "5": "Nhận xét ngắn cho tiêu chí 5",
-    "6": "Nhận xét ngắn cho tiêu chí 6",
-    "7": "Nhận xét ngắn cho tiêu chí 7"
+    "1": "Một câu rất ngắn",
+    "2": "Một câu rất ngắn",
+    "3": "Một câu rất ngắn",
+    "4": "Một câu rất ngắn",
+    "5": "Một câu rất ngắn",
+    "6": "Một câu rất ngắn",
+    "7": "Một câu rất ngắn"
   }},
-  "detailed_analysis": {{
-    "language": {{"issues": ["..."], "suggestions": ["..."]}},
-    "kanji_orthography": {{"feedback": "..."}},
-    "style_usage": {{"feedback": "..."}}
-  }},
+  "corrected_text": "Bản sửa tiếng Nhật ngắn gọn, không dài hơn bài gốc",
   "grading_method": "ai_7_criteria_gemini"
 }}
 
 LƯU Ý:
 - Phản hồi hoàn toàn bằng Tiếng Việt ở các trường text/mảng.
+- KHÔNG trả criteria_scores, total_score, overall_score, grade; backend sẽ tự tính từ criteria_levels.
+- KHÔNG trả detailed_analysis để tránh JSON quá dài.
 - Đảm bảo JSON hợp lệ.
 """
 
@@ -893,6 +911,10 @@ LƯU Ý:
     except Exception as e:
         import traceback
         print(f"❌ Grading error: {traceback.format_exc()}")
+        partial_result = _salvage_partial_gemini_result(raw_text, rubric_data, content, str(e))
+        if partial_result:
+            _log_ai_grading_result('gemini_partial', partial_result, raw_text=raw_text)
+            return partial_result
         fallback_result = _fallback_7criteria_feedback(content, rubric_data, str(e))
         _log_ai_grading_result('fallback', fallback_result)
         return fallback_result

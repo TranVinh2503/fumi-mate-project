@@ -73,7 +73,7 @@ def seed_timeline_tasks():
             title=timeline_name,
             description=prompt[:100] + '...',
             difficulty='N3',
-            task_type_id=i,  # 0=pretest, 1-9=tasks
+            task_type_id=task_data['id'],
             start_date=datetime.fromisoformat(item['start']),
             due_date=datetime.fromisoformat(item['due']),
             created_by=66  # 👉 Gắn cứng created_by là 66

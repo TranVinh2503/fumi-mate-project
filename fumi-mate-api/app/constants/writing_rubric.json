@@ -21,6 +21,7 @@
         "id": 1,
         "topic": "homestay_thank_you",
         "title": "Thư cảm ơn gia đình homestay",
+        "prompt_ja": "日本でのホームステイを終えて帰国しました。お世話になったホストファミリーに感謝の気持ちを伝える手紙を書きなさい。手紙には、ホームステイ中の楽しかった思い出を2つ挙げ、またいつか会いたいという気持ちを含めること。",
         "requirements": [
           "2 kỷ niệm",
           "lời cảm ơn",
@@ -31,6 +32,7 @@
         "id": 2,
         "topic": "sick_friend",
         "title": "Thư hỏi thăm bạn bị ốm",
+        "prompt_ja": "クラスメイトが病気で1週間入院することになりました。その友達を励ます手紙を書きなさい。手紙には、心配している気持ち、早く良くなるようにという願い、そして最近のクラスの様子を含めること。",
         "requirements": [
           "thể hiện sự lo lắng",
           "chúc mau khỏe",
@@ -41,6 +43,7 @@
         "id": 3,
         "topic": "advice_japanese_major",
         "title": "Thư tư vấn ngành tiếng Nhật",
+        "prompt_ja": "日本語専攻に入学を考えている高校生から手紙をもらいました。先輩として、返事の手紙を書きなさい。日本語を学ぶメリットと大変なこと（デメリット）を挙げ、あなた自身の経験を踏まえてアドバイスをすること。",
         "requirements": [
           "ưu điểm ngành",
           "khó khăn",
@@ -53,6 +56,7 @@
         "id": 4,
         "topic": "influential_quote",
         "title": "Bài phát biểu về câu nói có ảnh hưởng",
+        "prompt_ja": "あなたの人生に大きな影響を与えた「言葉（名言や誰かの一言）」についてスピーチ原稿を書きなさい。その言葉にどこで（誰から）出会ったか、その言葉の持つ意味、そしてそれによって自分がどう変わったかを説明すること。",
         "requirements": [
           "cơ duyên biết",
           "ý nghĩa",
@@ -63,6 +67,7 @@
         "id": 5,
         "topic": "failure_experience",
         "title": "Bài phát biểu về trải nghiệm thất bại",
+        "prompt_ja": "これまでの人生で経験した「大きな失敗」についてスピーチ原稿を書きなさい。どのような失敗だったか、その時の感情、どうやって乗り越えたか、そしてその経験から何を学んだかを順に話すこと。",
         "requirements": [
           "mô tả thất bại",
           "cảm xúc",
@@ -74,6 +79,7 @@
         "id": 6,
         "topic": "judging_by_appearance",
         "title": "Bài phát biểu về đánh giá qua ngoại hình",
+        "prompt_ja": "「人は見かけで判断してはいけない」というテーマでスピーチ原稿を書きなさい。あなた自身の経験（見た目で誤解した、または誤解された経験）を交えながら、なぜ見かけで判断することが問題なのか、自分の意見を述べること。",
         "requirements": [
           "trải nghiệm cá nhân",
           "phân tích vấn đề",
@@ -86,6 +92,7 @@
         "id": 7,
         "topic": "movie_review",
         "title": "Bài nêu cảm nghĩ về phim",
+        "prompt_ja": "最近見て感動した、または考えさせられた映画（または本）について、あなたの意見を書きなさい。一番印象に残ったシーン、その理由、そしてその作品から学んだことを具体的に述べること。",
         "requirements": [
           "cảnh ấn tượng",
           "lý do",
@@ -96,6 +103,7 @@
         "id": 8,
         "topic": "student_stress",
         "title": "Bài nêu ý kiến về stress của sinh viên",
+        "prompt_ja": "現代の若者（学生）が抱えるストレスについて、あなたの意見を書きなさい。具体的にどのようなストレスがあるか例を挙げ、その原因を分析し、それを軽減するための解決策を提案すること。",
         "requirements": [
           "ví dụ cụ thể",
           "nguyên nhân",
@@ -106,6 +114,7 @@
         "id": 9,
         "topic": "living_alone_vs_family",
         "title": "Bài so sánh sống một mình và sống cùng gia đình",
+        "prompt_ja": "「大学生は一人暮らしをするべきか、それとも実家（家族）と暮らすべきか」について、あなたの意見を書きなさい。両方のメリットとデメリットを比較した上で、最終的な自分の立場と理由を明確にすること。",
         "requirements": [
           "ưu điểm",
           "nhược điểm",

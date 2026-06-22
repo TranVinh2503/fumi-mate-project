@@ -673,6 +673,7 @@ export default function TeacherGradeSubmissionPage() {
 
   const isGraded = submission.status === 'teacher_graded';
   const isVariantGroup = submission.experimental_group === 'variant';
+  const hasGradingTask = Boolean(submission.grading_task?.prompt_ja);
   const canEditManualGrade = !isGraded && !isVariantGroup;
   const canPublishAIGrade = !isGraded && isVariantGroup && Boolean(selectedAiResultId || submission.ai_score || formData.overall_score);
 
@@ -712,7 +713,8 @@ export default function TeacherGradeSubmissionPage() {
           <button
             type="button"
             onClick={handleAIGrade}
-            disabled={aiLoading || loading || isGraded || !isVariantGroup}
+            disabled={aiLoading || loading || isGraded || !isVariantGroup || !hasGradingTask}
+            title={!hasGradingTask ? 'Chưa có đề chấm tương ứng với task_type_id' : undefined}
             className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 border border-purple-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {aiLoading ? '🤖 Đang AI chấm...' : '🤖 AI chấm điểm'}
@@ -742,7 +744,22 @@ export default function TeacherGradeSubmissionPage() {
         </div>
       </div>
 
-      {/* 2. PHẦN TRÊN: Nội dung bài làm */}
+      {/* 2. Đề bài mà AI/giáo viên dùng để chấm */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 className="mb-4 font-bold text-slate-800">Đề bài</h3>
+
+        {submission.grading_task?.prompt_ja ? (
+          <div className="whitespace-pre-wrap border-l-4 border-indigo-400 bg-indigo-50 px-5 py-4 text-base leading-relaxed text-slate-700">
+            {submission.grading_task.prompt_ja}
+          </div>
+        ) : (
+          <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Không tìm thấy đề tương ứng với task_type_id. Không nên gọi AI chấm trước khi kiểm tra lại mapping.
+          </div>
+        )}
+      </div>
+
+      {/* 3. PHẦN TRÊN: Nội dung bài làm */}
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 className="font-bold text-slate-700 mb-4 flex justify-between">
           Nội dung bài làm
@@ -756,7 +773,7 @@ export default function TeacherGradeSubmissionPage() {
         </div>
       </div>
 
-      {/* 3. PHẦN DƯỚI: Chia 2 cột */}
+      {/* 4. PHẦN DƯỚI: Chia 2 cột */}
       <div className="grid lg:grid-cols-2 gap-8 items-start">
         {/* Cột trái dưới: 7 tiêu chí đánh giá */}
         <div className="space-y-4">

@@ -14,7 +14,7 @@ from app.models.submission import Submission
 from app.models.ai_grading_result import AIGradingResult
 from app.extensions import db
 from app.utils.permissions import role_required
-from app.services.gemini_service import grade_writing_submission
+from app.services.gemini_service import get_writing_task_info, grade_writing_submission
 from app.ai_services import generate_ai_feedback
 from app.services.openai_service import grade_writing_submission_openai
 
@@ -429,6 +429,7 @@ def get_submission_detail(submission_id):
             return jsonify({'error': 'Task not found'}), 404
         
         student = User.query.get(sub.student_id)
+        task_info = get_writing_task_info(task.task_type_id) if task.task_type_id is not None else None
         
         ai_feedback = {}
         if sub.ai_feedback:
@@ -445,6 +446,7 @@ def get_submission_detail(submission_id):
             'task_id': sub.task_id,
             'task_title': task.title,
             'task_type_id': task.task_type_id,
+            'grading_task': task_info,
             'content': sub.content,
             'ai_score': sub.ai_score,
             'ai_feedback': ai_feedback,
@@ -645,6 +647,10 @@ def teacher_ai_grade_submission(submission_id):
 
         # Choose difficulty fallback
         difficulty = getattr(task, 'difficulty', None) or 'N3'
+        if task.task_type_id is None or not get_writing_task_info(task.task_type_id):
+            return jsonify({
+                'error': 'Không tìm thấy đề chấm tương ứng với task_type_id. Hãy kiểm tra mapping trước khi gọi AI.'
+            }), 400
 
         body = request.get_json(silent=True) or {}
         requested_providers = body.get('providers') or get_configured_ai_grading_providers()

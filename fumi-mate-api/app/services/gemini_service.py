@@ -248,10 +248,18 @@ def _find_writing_task(rubric_data: Dict[str, Any], task_type_id: int) -> Option
                     "type": task_type,
                     "title": task.get("title") or task.get("topic"),
                     "topic": task.get("topic"),
+                    "prompt_ja": task.get("prompt_ja"),
+                    "prompt_vi": task.get("prompt_vi"),
                     "requirements": task.get("requirements", [])
                 }
 
     return None
+
+def get_writing_task_info(task_type_id: int) -> Optional[Dict[str, Any]]:
+    rubric_path = Path(__file__).parent / '../constants/writing_rubric.json'
+    with open(rubric_path, 'r', encoding='utf-8') as f:
+        rubric_data = json.load(f)
+    return _find_writing_task(rubric_data, int(task_type_id))
 
 def _grade_from_score(total_score: float) -> str:
     if total_score >= 90:

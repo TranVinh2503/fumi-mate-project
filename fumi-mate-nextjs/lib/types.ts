@@ -76,6 +76,16 @@ export interface Submission {
   student_id: number | string;
   student_name?: string;
   task_title?: string;
+  task_type_id?: number | null;
+  grading_task?: {
+    id?: number;
+    type?: string;
+    title?: string;
+    topic?: string;
+    prompt_ja?: string;
+    prompt_vi?: string;
+    requirements?: string[] | Record<string, any>;
+  } | null;
 
   content: string;
   aiScore?: number;

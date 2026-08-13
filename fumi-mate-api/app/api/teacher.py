@@ -15,7 +15,6 @@ from app.models.ai_grading_result import AIGradingResult
 from app.extensions import db
 from app.utils.permissions import role_required
 from app.services.gemini_service import get_writing_task_info, grade_writing_submission
-from app.ai_services import generate_ai_feedback
 from app.services.openai_service import grade_writing_submission_openai
 
 from werkzeug.utils import secure_filename
@@ -27,6 +26,21 @@ teacher_bp = Blueprint('teacher', __name__)
 def get_current_user_id():
     identity = get_jwt_identity()
     return identity.get("id") if isinstance(identity, dict) else identity
+
+
+def get_grading_task_type_id(task):
+    """Resolve rubric IDs for legacy pre/post-test rows created before task_type_id."""
+    if task and task.task_type_id is not None:
+        return task.task_type_id
+    if task and (task.title or '').strip().lower() in {'pre-test', 'post-test'}:
+        return 0
+    return None
+
+
+def teacher_can_access_task(task, user_id):
+    if not task:
+        return False
+    return task.created_by == int(user_id)
 
 
 def get_configured_ai_grading_providers():
@@ -427,9 +441,12 @@ def get_submission_detail(submission_id):
         task = Task.query.get(sub.task_id)
         if not task:
             return jsonify({'error': 'Task not found'}), 404
+        if not teacher_can_access_task(task, user_id):
+            return jsonify({'error': 'Not authorized for this task'}), 403
         
         student = User.query.get(sub.student_id)
-        task_info = get_writing_task_info(task.task_type_id) if task.task_type_id is not None else None
+        grading_task_type_id = get_grading_task_type_id(task)
+        task_info = get_writing_task_info(grading_task_type_id) if grading_task_type_id is not None else None
         
         ai_feedback = {}
         if sub.ai_feedback:
@@ -445,7 +462,7 @@ def get_submission_detail(submission_id):
             'experimental_group': student.experimental_group if student else None,
             'task_id': sub.task_id,
             'task_title': task.title,
-            'task_type_id': task.task_type_id,
+            'task_type_id': grading_task_type_id,
             'grading_task': task_info,
             'content': sub.content,
             'ai_score': sub.ai_score,
@@ -501,7 +518,7 @@ def upload_word_correction(submission_id):
             return jsonify({'error': 'Submission not found'}), 404
         
         task = Task.query.get(sub.task_id)
-        if not task or task.created_by != int(user_id):
+        if not teacher_can_access_task(task, user_id):
             return jsonify({'error': 'Not authorized for this submission'}), 403
         
         student = User.query.get(sub.student_id)
@@ -551,6 +568,76 @@ CRITERIA = [
   {'id': '6', 'max': 10},
   {'id': '7', 'max': 10},
 ]
+
+CRITERIA_SCORE_LEVELS = {
+    '1': {15.0: 'M4', 11.25: 'M3', 7.5: 'M2', 3.75: 'M1'},
+    '2': {15.0: 'M4', 11.25: 'M3', 7.5: 'M2', 3.75: 'M1'},
+    '3': {15.0: 'M4', 11.25: 'M3', 7.5: 'M2', 3.75: 'M1'},
+    '4': {20.0: 'M4', 15.0: 'M3', 10.0: 'M2', 5.0: 'M1'},
+    '5': {15.0: 'M4', 11.25: 'M3', 7.5: 'M2', 3.75: 'M1'},
+    '6': {10.0: 'M4', 7.5: 'M3', 5.0: 'M2', 2.5: 'M1'},
+    '7': {10.0: 'M4', 7.5: 'M3', 5.0: 'M2', 2.5: 'M1'},
+}
+
+
+def grade_from_score(total_score):
+    if total_score >= 90:
+        return 'A'
+    if total_score >= 80:
+        return 'B'
+    if total_score >= 70:
+        return 'C'
+    if total_score >= 60:
+        return 'D'
+    return 'F'
+
+
+def validate_teacher_grading_payload(data):
+    if not isinstance(data, dict):
+        return None, 'Dữ liệu chấm điểm không hợp lệ.'
+
+    criteria_scores = data.get('criteria_scores')
+    if not isinstance(criteria_scores, dict):
+        return None, 'Thiếu criteria_scores cho 7 tiêu chí.'
+
+    normalized_scores = {}
+    normalized_levels = {}
+    for criterion in CRITERIA:
+        criterion_id = criterion['id']
+        if criterion_id not in criteria_scores:
+            return None, f'Thiếu điểm tiêu chí {criterion_id}.'
+
+        try:
+            score = round(float(criteria_scores[criterion_id]), 2)
+        except (TypeError, ValueError):
+            return None, f'Điểm tiêu chí {criterion_id} phải là số.'
+
+        allowed_scores = CRITERIA_SCORE_LEVELS[criterion_id]
+        if score not in allowed_scores:
+            allowed_values = ', '.join(str(value).rstrip('0').rstrip('.') for value in allowed_scores.keys())
+            return None, f'Điểm tiêu chí {criterion_id} phải thuộc rubric: {allowed_values}.'
+
+        normalized_scores[criterion_id] = score
+        normalized_levels[criterion_id] = allowed_scores[score]
+
+    total_score = round(sum(normalized_scores.values()), 2)
+    submitted_total = data.get('overall_score', data.get('total_score', total_score))
+    try:
+        submitted_total = round(float(submitted_total), 2)
+    except (TypeError, ValueError):
+        return None, 'overall_score phải là số.'
+
+    if submitted_total != total_score:
+        return None, f'Tổng điểm không khớp rubric: nhận {submitted_total}, đúng là {total_score}.'
+
+    data['criteria_scores'] = normalized_scores
+    data['criteria_levels'] = normalized_levels
+    data['overall_score'] = total_score
+    data['total_score'] = total_score
+    data['grade'] = data.get('grade') or grade_from_score(total_score)
+    return data, None
+
+
 @teacher_bp.route('/submissions/<int:submission_id>/grade', methods=['PATCH'])
 @jwt_required()
 @role_required('teacher')
@@ -571,12 +658,8 @@ def grade_submission(submission_id):
             return jsonify({'error': 'Submission not found'}), 404
         
         task = Task.query.get(sub.task_id)
-        if not task or task.created_by != int(user_id):
+        if not teacher_can_access_task(task, user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
-
-        student = User.query.get(sub.student_id)
-        if student and student.experimental_group == 'variant':
-            return jsonify({'error': 'Nhóm AI không cho phép giáo viên chấm thủ công. Hãy dùng AI Grade rồi gửi kết quả AI.'}), 403
 
         # 3. XỬ LÝ LƯU FILE VÀO THƯ MỤC STATIC (PUBLIC)
         if 'file' in request.files:
@@ -597,12 +680,16 @@ def grade_submission(submission_id):
                 # Kết quả lưu vào DB: /static/graded/graded_254_1714800000_abc.docx
                 sub.word_file_path = f"/static/graded/{filename}"
 
+        data, validation_error = validate_teacher_grading_payload(data)
+        if validation_error:
+            return jsonify({'error': validation_error}), 400
+
         # 4. CẬP NHẬT THÔNG TIN CHẤM ĐIỂM
         # Lưu ý: Lúc này data không cần chứa word_file_path nữa vì đã lưu riêng
         data['grading_method'] = 'teacher_manual'
         
         sub.teacher_score = float(data.get('overall_score', 0))
-        sub.teacher_feedback = json.dumps(data) # Chỉ chứa điểm 7 tiêu chí và feedback_text
+        sub.teacher_feedback = json.dumps(data, ensure_ascii=False) # Chỉ chứa điểm 7 tiêu chí và feedback_text
         sub.status = 'teacher_graded'
         sub.updated_at = datetime.utcnow()
         print(sub)
@@ -638,16 +725,17 @@ def teacher_ai_grade_submission(submission_id):
             return jsonify({'error': 'Submission not found'}), 404
 
         task = Task.query.get(sub.task_id)
-        if not task or task.created_by != int(user_id):
+        if not teacher_can_access_task(task, user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
         student = User.query.get(sub.student_id)
-        if student and student.experimental_group != 'variant':
+        if not student or (student.experimental_group or '').strip().lower() != 'variant':
             return jsonify({'error': 'Chỉ nhóm AI mới được gọi AI chấm điểm.'}), 403
 
         # Choose difficulty fallback
         difficulty = getattr(task, 'difficulty', None) or 'N3'
-        if task.task_type_id is None or not get_writing_task_info(task.task_type_id):
+        grading_task_type_id = get_grading_task_type_id(task)
+        if grading_task_type_id is None or not get_writing_task_info(grading_task_type_id):
             return jsonify({
                 'error': 'Không tìm thấy đề chấm tương ứng với task_type_id. Hãy kiểm tra mapping trước khi gọi AI.'
             }), 400
@@ -673,14 +761,20 @@ def teacher_ai_grade_submission(submission_id):
             start_time = time.monotonic()
             try:
                 if provider == 'gemini':
-                    feedback_data = generate_ai_feedback(sub.content or '', task=task, difficulty=difficulty)
+                    feedback_data = grade_writing_submission(
+                        grading_task_type_id,
+                        sub.content or '',
+                        difficulty=difficulty
+                    )
+                    feedback_data['grading_method'] = feedback_data.get('grading_method') or 'gemini_rubric'
+                    feedback_data['overall_score'] = feedback_data.get('total_score') or feedback_data.get('overall_score', 0)
                     feedback_data['provider'] = 'gemini'
                     feedback_data['model'] = feedback_data.get('model') or os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
                     feedback_data['prompt_version'] = feedback_data.get('prompt_version') or 'rubric_7criteria_v1'
                     feedback_data['rubric_version'] = feedback_data.get('rubric_version') or 'writing_rubric_2026_7criteria'
                 else:
                     feedback_data = grade_writing_submission_openai(
-                        task.task_type_id,
+                        grading_task_type_id,
                         sub.content or '',
                         difficulty=difficulty
                     )
@@ -745,11 +839,11 @@ def publish_ai_grade_submission(submission_id):
             return jsonify({'error': 'Submission not found'}), 404
 
         task = Task.query.get(sub.task_id)
-        if not task or task.created_by != int(user_id):
+        if not teacher_can_access_task(task, user_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
         student = User.query.get(sub.student_id)
-        if not student or student.experimental_group != 'variant':
+        if not student or (student.experimental_group or '').strip().lower() != 'variant':
             return jsonify({'error': 'Chỉ nhóm AI mới được gửi kết quả AI.'}), 403
 
         body = request.get_json(silent=True) or {}

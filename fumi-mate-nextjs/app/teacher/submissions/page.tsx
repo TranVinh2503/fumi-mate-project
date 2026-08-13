@@ -50,13 +50,16 @@ export default function TeacherSubmissionsPage() {
 
   // Hàm Helper để check xem đã chấm hay chưa (tránh lỗi điểm 0 hoặc null)
   const isGraded = (score: number | null | undefined) => score !== null && score !== undefined;
-  const isVariantSubmission = (sub: SubmissionWithDetails) => sub.experimental_group === 'variant';
-  const isPublishedResult = (sub: SubmissionWithDetails) =>
-    sub.status === 'teacher_graded' || isGraded(sub.teacher_score);
+  const isVariantSubmission = (sub: SubmissionWithDetails) =>
+    sub.experimental_group?.trim().toLowerCase() === 'variant';
+  const isPreTestSubmission = (sub: SubmissionWithDetails) =>
+    sub.task_title?.trim().toLowerCase() === 'pre-test';
+  const hasTeacherGrade = (sub: SubmissionWithDetails) =>
+    isGraded(sub.teacher_score) || Boolean(sub.teacher_feedback);
 
   const filteredSubmissions = submissions.filter(sub => {
-    if (filter === 'submitted') return !isPublishedResult(sub);
-    if (filter === 'graded') return isPublishedResult(sub);
+    if (filter === 'submitted') return !hasTeacherGrade(sub);
+    if (filter === 'graded') return hasTeacherGrade(sub);
     return true; // cho 'all'
   }).filter(sub =>
     taskFilter === '' || (sub.task_title && sub.task_title.toLowerCase().includes(taskFilter.toLowerCase()))
@@ -140,7 +143,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          Chờ chấm ({submissions.filter(s => !isPublishedResult(s)).length})
+          Chờ GV chấm ({submissions.filter(s => !hasTeacherGrade(s)).length})
         </button>
         <button
           onClick={() => setFilter('graded')}
@@ -151,7 +154,7 @@ export default function TeacherSubmissionsPage() {
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          Đã chấm ({submissions.filter(s => isPublishedResult(s)).length})
+          GV đã chấm ({submissions.filter(s => hasTeacherGrade(s)).length})
         </button>
       </div>
 
@@ -196,8 +199,12 @@ export default function TeacherSubmissionsPage() {
               </thead>
               <tbody>
                 {filteredSubmissions.map((sub) => {
-                  const publishedResult = isPublishedResult(sub);
-                  const canRunAIGrade = !publishedResult && isVariantSubmission(sub);
+                  const teacherGraded = hasTeacherGrade(sub);
+                  const aiAlreadyGraded = isGraded(sub.ai_score);
+                  const legacyPreTestNeedsAIGrade =
+                    isPreTestSubmission(sub) && !aiAlreadyGraded;
+                  const canRunAIGrade =
+                    isVariantSubmission(sub) && (!aiAlreadyGraded || legacyPreTestNeedsAIGrade);
 
                   return (
                   <tr
@@ -231,8 +238,10 @@ export default function TeacherSubmissionsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {publishedResult ? (
-                        <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded">Graded</span>
+                      {teacherGraded ? (
+                        <span className="badge badge-success bg-green-100 text-green-800 px-2 py-1 rounded">Teacher graded</span>
+                      ) : aiAlreadyGraded ? (
+                        <span className="badge badge-info bg-blue-100 text-blue-800 px-2 py-1 rounded">AI graded</span>
                       ) : sub.status === 'submitted' || (sub.status as any) === 1 ? (
                         <span className="badge badge-warning bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span>
                       ) : (
@@ -244,21 +253,25 @@ export default function TeacherSubmissionsPage() {
                         <button
                           onClick={() => sub.id && handleRowClick(sub.id)}
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            publishedResult
+                            teacherGraded
                               ? 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                               : 'bg-primary text-white hover:bg-secondary'
                           }`}
                         >
                           <Eye className="w-4 h-4" />
-                          {publishedResult ? 'View' : 'Grade'}
+                          {teacherGraded ? 'View' : 'Grade'}
                         </button>
-                        {/* AI Grade button only for unpublished variant group submissions */}
-                        {canRunAIGrade && (
+                        {isVariantSubmission(sub) && (
                           <button
                             type="button"
                             onClick={() => sub.id && handleAIGrade(sub.id)}
-                            disabled={aiGradingId === sub.id}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                            disabled={!canRunAIGrade || aiGradingId === sub.id}
+                            title={
+                              aiAlreadyGraded && !legacyPreTestNeedsAIGrade
+                                ? 'Bài này đã có điểm AI'
+                                : undefined
+                            }
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {aiGradingId === sub.id ? (
                               <>

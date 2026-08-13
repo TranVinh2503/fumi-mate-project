@@ -10,9 +10,16 @@ from app.extensions import db
 import json
 
 student_bp = Blueprint('student', __name__)
+
+HIDDEN_STUDENT_TASK_TITLES = {'Pre-test'}
+
+
 def get_current_user_id():
     identity = get_jwt_identity()
     return identity.get("id") if isinstance(identity, dict) else identity
+
+def is_hidden_from_students(task):
+    return bool(task and task.title in HIDDEN_STUDENT_TASK_TITLES)
 
 def is_submission_published(submission):
     """Only expose grading results to students after teacher confirms/sends."""
@@ -96,7 +103,8 @@ def get_tasks():
         db.or_(
             Task.start_date <= now,
             Task.start_date.is_(None)
-        )
+        ),
+        Task.title.notin_(HIDDEN_STUDENT_TASK_TITLES)
     ).all()
     tasks_data = []
 
@@ -139,6 +147,8 @@ def get_task(task_id):
 
     task = Task.query.get(task_id)
     if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    if is_hidden_from_students(task):
         return jsonify({'error': 'Task not found'}), 404
 
     # Get existing submission if any
@@ -189,6 +199,8 @@ def get_submissions():
     submissions_data = []
     for sub in submissions:
         task_obj = Task.query.get(sub.task_id) if sub.task_id else None
+        if is_hidden_from_students(task_obj):
+            continue
         visible_grading = student_visible_grading_fields(sub, user.experimental_group)
         submissions_data.append({
             'id': sub.id,
@@ -221,6 +233,8 @@ def get_submission_detail(submission_id):
         return jsonify({'error': 'Unauthorized or not found'}), 404
 
     task_obj = Task.query.get(submission.task_id) if submission.task_id else None
+    if is_hidden_from_students(task_obj):
+        return jsonify({'error': 'Unauthorized or not found'}), 404
     visible_grading = student_visible_grading_fields(submission, submission.student.experimental_group)
     
     submission_data = {
@@ -261,6 +275,8 @@ def grade_submission(submission_id):
         return jsonify({'error': 'AI grading only for variant group.'}), 403
 
     task = Task.query.get(submission.task_id)
+    if is_hidden_from_students(task):
+        return jsonify({'error': 'Not found.'}), 404
     if not task or task.task_type_id is None:
         return jsonify({'error': 'Task missing task_type_id.'}), 400
 
@@ -423,6 +439,9 @@ def submit_test(task_id):
 
     content = data['content']
     action = data.get('action', 'submit')  # 'save' or 'submit'
+    task = Task.query.get(task_id)
+    if not task or is_hidden_from_students(task):
+        return jsonify({'error': 'Task not found'}), 404
 
     # Check if submission already exists
     submission = Submission.query.filter_by(task_id=task_id, student_id=user_id).order_by(Submission.id.desc()).first()
@@ -456,7 +475,6 @@ def submit_test(task_id):
     # Tính toán thời gian nộp trễ (nếu có)
     submission.updated_at = datetime.utcnow()
     if action == 'submit':
-        task = Task.query.get(task_id)
         if task and task.due_date and datetime.utcnow() > task.due_date:
             delta = datetime.utcnow() - task.due_date
             submission.late_minutes = max(0, delta.total_seconds() / 60.0)

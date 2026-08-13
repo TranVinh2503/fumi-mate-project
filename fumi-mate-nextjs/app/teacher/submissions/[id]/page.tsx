@@ -175,6 +175,25 @@ const CRITERIA = [
   }
 ];
 
+const createEmptyTeacherFeedback = (): TeacherFeedbackData => ({
+  overall_score: 0,
+  grade: '',
+  feedback_text: '',
+  ai_summary: '',
+  corrected_text: '',
+  error_reason: '',
+  criteria_scores: {
+    '1': 0,
+    '2': 0,
+    '3': 0,
+    '4': 0,
+    '5': 0,
+    '6': 0,
+    '7': 0
+  },
+  grading_method: 'teacher_manual'
+});
+
 export default function TeacherGradeSubmissionPage() {
   const router = useRouter();
   const params = useParams();
@@ -192,24 +211,7 @@ export default function TeacherGradeSubmissionPage() {
   const [selectedAiResultId, setSelectedAiResultId] = useState<number | null>(null);
 
   // Khởi tạo State với giá trị mặc định sạch
-  const [formData, setFormData] = useState<TeacherFeedbackData>({
-    overall_score: 0,
-    grade: '',
-    feedback_text: '',
-    ai_summary: '',
-    corrected_text: '',
-    error_reason: '',
-    criteria_scores: {
-      '1': 0,
-      '2': 0,
-      '3': 0,
-      '4': 0,
-      '5': 0,
-      '6': 0,
-      '7': 0
-    },
-    grading_method: 'teacher_manual'
-  });
+  const [formData, setFormData] = useState<TeacherFeedbackData>(createEmptyTeacherFeedback);
 
   const normalizeCriteriaScores = (scores: any): Record<string, number> => {
     const normalizedScores: Record<string, number> = {};
@@ -253,28 +255,27 @@ export default function TeacherGradeSubmissionPage() {
     return provider;
   };
 
-  const applyFeedbackToForm = (feedback: any, fallbackMethod = 'ai_generated') => {
+  const applyTeacherFeedbackToForm = (feedback: any) => {
     if (!feedback) return;
 
     const normalizedScores = normalizeCriteriaScores(feedback.criteria_scores);
-    setAiFeedback(feedback);
     setFormData(prev => ({
       ...prev,
       overall_score: Number(feedback.overall_score || feedback.total_score) || 0,
       grade: feedback.grade || prev.grade || '',
-      feedback_text: buildRubricFeedbackText(normalizedScores),
-      ai_summary: feedback.feedback_text || prev.ai_summary || '',
-      corrected_text: feedback.corrected_text || prev.corrected_text || '',
+      feedback_text: feedback.feedback_text || buildRubricFeedbackText(normalizedScores),
+      ai_summary: '',
+      corrected_text: feedback.corrected_text || '',
       error_reason: feedback.error_reason || '',
       criteria_scores: normalizedScores,
-      grading_method: feedback.grading_method || fallbackMethod
+      grading_method: 'teacher_manual'
     }));
   };
 
   const handleSelectAiResult = (result: AIGradingResult) => {
     if (result.status === 'failed') return;
     setSelectedAiResultId(result.id);
-    applyFeedbackToForm(result.feedback, `${result.provider}_generated`);
+    setAiFeedback(result.feedback || null);
   };
 
   const fetchSubmission = useCallback(async () => {
@@ -326,17 +327,14 @@ export default function TeacherGradeSubmissionPage() {
       const defaultAiResult = selectedResult || firstUsableResult;
       setSelectedAiResultId(defaultAiResult?.id || null);
 
-      /**
-       * Ưu tiên teacher_feedback nếu đã có.
-       * Nếu chưa có teacher_feedback nhưng đã có ai_feedback thì preview kết quả AI.
-       */
-      const feedbackSource = sub.teacher_feedback || sub.ai_feedback || defaultAiResult?.feedback;
+      const parsedAiFeedback = parseFeedbackSource(sub.ai_feedback) || defaultAiResult?.feedback || null;
+      setAiFeedback(parsedAiFeedback);
 
-      if (feedbackSource) {
-        const parsed = parseFeedbackSource(feedbackSource);
+      if (sub.teacher_feedback) {
+        const parsed = parseFeedbackSource(sub.teacher_feedback);
 
         console.group('🧾 PARSED FEEDBACK SOURCE');
-        console.log('source:', sub.teacher_feedback ? 'teacher_feedback' : 'ai_feedback');
+        console.log('source:', 'teacher_feedback');
         console.log('parsed:', parsed);
         console.log('criteria_scores:', parsed?.criteria_scores);
         console.log('criteria_levels:', parsed?.criteria_levels);
@@ -344,11 +342,10 @@ export default function TeacherGradeSubmissionPage() {
         console.groupEnd();
 
         if (parsed) {
-          if (sub.ai_feedback) {
-            setAiFeedback(parseFeedbackSource(sub.ai_feedback));
-          }
-          applyFeedbackToForm(parsed, sub.teacher_feedback ? 'teacher_manual' : 'ai_generated');
+          applyTeacherFeedbackToForm(parsed);
         }
+      } else {
+        setFormData(createEmptyTeacherFeedback());
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -561,9 +558,9 @@ export default function TeacherGradeSubmissionPage() {
 
       setAiResults(prev => [...freshResults, ...prev]);
       setSelectedAiResultId(previewResult?.id || null);
-      applyFeedbackToForm(feedback, data.grading_method || 'ai_generated');
+      setAiFeedback(feedback);
 
-      setMessage('✅ AI đã chấm điểm xong. Hãy chọn Gemini hoặc ChatGPT rồi bấm Gửi kết quả AI.');
+      setMessage('✅ AI đã chấm điểm xong. Kết quả AI đã nằm riêng để so sánh với phần giáo viên chấm.');
     } catch (err: any) {
       console.error('❌ AI grading error:', err);
       setMessage(`❌ Lỗi AI chấm điểm: ${err.message}`);
@@ -671,11 +668,24 @@ export default function TeacherGradeSubmissionPage() {
     return <div className="p-10 text-center">Đang tải dữ liệu bài làm...</div>;
   }
 
-  const isGraded = submission.status === 'teacher_graded';
-  const isVariantGroup = submission.experimental_group === 'variant';
+  const isVariantGroup = submission.experimental_group?.trim().toLowerCase() === 'variant';
+  const isPreTest = submission.task_title?.trim().toLowerCase() === 'pre-test';
+  const hasTeacherManualGrade = Boolean(submission.teacher_score != null || submission.teacher_feedback);
+  const hasActualPublishedResult = Boolean(
+    submission.ai_score != null ||
+    submission.teacher_score != null ||
+    submission.teacher_feedback ||
+    submission.word_file_path
+  );
+  const isGraded = submission.status === 'teacher_graded' && hasActualPublishedResult;
   const hasGradingTask = Boolean(submission.grading_task?.prompt_ja);
-  const canEditManualGrade = !isGraded && !isVariantGroup;
-  const canPublishAIGrade = !isGraded && isVariantGroup && Boolean(selectedAiResultId || submission.ai_score || formData.overall_score);
+  const hasAIResult = Boolean(selectedAiResultId || aiResults.length > 0 || submission.ai_score != null);
+  const canRunAIGrade = isVariantGroup && (!isGraded || (isPreTest && !hasAIResult));
+  const canEditManualGrade = !hasTeacherManualGrade;
+  const canPublishAIGrade =
+    isVariantGroup &&
+    (!isGraded || isPreTest) &&
+    Boolean(selectedAiResultId || submission.ai_score);
 
   return (
     <section className="container mx-auto p-8 max-w-6xl space-y-8">
@@ -710,15 +720,23 @@ export default function TeacherGradeSubmissionPage() {
             📥 Xuất Word bài làm
           </button>
 
-          <button
-            type="button"
-            onClick={handleAIGrade}
-            disabled={aiLoading || loading || isGraded || !isVariantGroup || !hasGradingTask}
-            title={!hasGradingTask ? 'Chưa có đề chấm tương ứng với task_type_id' : undefined}
-            className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 border border-purple-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {aiLoading ? '🤖 Đang AI chấm...' : '🤖 AI chấm điểm'}
-          </button>
+          {isVariantGroup && (
+            <button
+              type="button"
+              onClick={handleAIGrade}
+              disabled={aiLoading || loading || !canRunAIGrade || !hasGradingTask}
+              title={
+                !hasGradingTask
+                  ? 'Chưa có đề chấm tương ứng với task_type_id'
+                  : isGraded && !isPreTest
+                    ? 'Kết quả bài này đã được gửi'
+                    : undefined
+              }
+              className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 border border-purple-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {aiLoading ? '🤖 Đang AI chấm...' : '🤖 AI chấm điểm'}
+            </button>
+          )}
 
           {canEditManualGrade ? (
             <label className="px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 cursor-pointer border border-green-100 text-sm">
@@ -777,7 +795,7 @@ export default function TeacherGradeSubmissionPage() {
       <div className="grid lg:grid-cols-2 gap-8 items-start">
         {/* Cột trái dưới: 7 tiêu chí đánh giá */}
         <div className="space-y-4">
-          <h3 className="font-bold text-xl text-slate-800 px-2">Đánh giá chi tiết</h3>
+          <h3 className="font-bold text-xl text-slate-800 px-2">Giáo viên chấm</h3>
 
           {CRITERIA.map(c => {
             const currentScore = formData.criteria_scores?.[c.id] || 0;
@@ -785,8 +803,6 @@ export default function TeacherGradeSubmissionPage() {
             const selectedLevel = Object.entries(c.levels).find(
               ([_, level]) => level.score === currentScore
             );
-
-            const aiCriteriaFeedback = aiFeedback?.criteria_feedback?.[c.id];
 
             return (
               <div
@@ -835,12 +851,6 @@ export default function TeacherGradeSubmissionPage() {
                     &quot;{c.levels[selectedLevel[0] as LevelKey].desc}&quot;
                   </div>
                 )}
-
-                {aiCriteriaFeedback && (
-                  <div className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-100 text-[11px] text-purple-700 leading-relaxed">
-                    <b>Nhận xét AI:</b> {aiCriteriaFeedback}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -848,11 +858,29 @@ export default function TeacherGradeSubmissionPage() {
 
         {/* Cột phải dưới: Tổng điểm & Nhận xét */}
         <div className="sticky top-8 space-y-6">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+              <p className="text-xs font-bold uppercase text-purple-500">AI</p>
+              <p className="mt-2 text-3xl font-black text-purple-700">
+                {submission.ai_score ?? aiFeedback?.overall_score ?? aiFeedback?.total_score ?? '—'}
+              </p>
+              <p className="text-xs text-purple-500">Lưu trong ai_score</p>
+            </div>
+
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+              <p className="text-xs font-bold uppercase text-indigo-500">Giáo viên</p>
+              <p className="mt-2 text-3xl font-black text-indigo-700">
+                {submission.teacher_score ?? formData.overall_score ?? '—'}
+              </p>
+              <p className="text-xs text-indigo-500">Lưu trong teacher_score</p>
+            </div>
+          </div>
+
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50/50 rounded-bl-full -mr-8 -mt-8"></div>
 
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 mb-4">
-              Tổng điểm hệ thống
+              Tổng điểm giáo viên
             </p>
 
             <div className="flex items-baseline justify-center">
@@ -871,10 +899,10 @@ export default function TeacherGradeSubmissionPage() {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold text-purple-800">
-                        Kết quả AI để chọn gửi
+                        Kết quả AI để so sánh
                       </p>
                       <p className="text-xs text-purple-500">
-                        Sinh viên chỉ nhìn thấy kết quả được chọn sau khi giáo viên gửi.
+                        Kết quả này lưu riêng, không đổ vào form giáo viên.
                       </p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-purple-600">
@@ -891,7 +919,7 @@ export default function TeacherGradeSubmissionPage() {
                         <button
                           key={result.id}
                           type="button"
-                          disabled={isFailed || isGraded}
+                          disabled={isFailed}
                           onClick={() => handleSelectAiResult(result)}
                           className={`w-full rounded-xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed ${
                             isSelected
@@ -946,7 +974,7 @@ export default function TeacherGradeSubmissionPage() {
 
               <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <span className="font-bold">Phương thức chấm:</span>{' '}
-                {formData.grading_method || 'unknown'}
+                Giáo viên thủ công
               </div>
 
               {formData.grading_method === 'heuristic_7_criteria_fallback' && (
@@ -961,7 +989,7 @@ export default function TeacherGradeSubmissionPage() {
 
             <div className="mt-10 text-left space-y-4">
               <label className="block text-sm font-bold text-slate-700">
-                Đánh giá chi tiết
+                Nhận xét giáo viên
               </label>
 
               <textarea
@@ -985,14 +1013,10 @@ export default function TeacherGradeSubmissionPage() {
               {isVariantGroup && (
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">
-                    Bản gợi ý chỉnh sửa
+                    Bản gợi ý chỉnh sửa của AI
                   </label>
                   <textarea
-                    value={formData.corrected_text || ''}
-                    onChange={e => setFormData({
-                      ...formData,
-                      corrected_text: e.target.value
-                    })}
+                    value={aiFeedback?.corrected_text || ''}
                     disabled
                     className="w-full p-5 border-2 border-slate-50 rounded-2xl h-80 focus:border-indigo-100 outline-none text-sm text-slate-600 leading-relaxed transition-all resize-none disabled:opacity-75"
                     placeholder="Sau khi bấm AI chấm điểm, hệ thống sẽ gợi ý bản viết lại tại đây..."
@@ -1042,7 +1066,7 @@ export default function TeacherGradeSubmissionPage() {
                   disabled={loading || aiLoading}
                   className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:bg-slate-300 mt-4"
                 >
-                  {loading ? 'Đang lưu kết quả...' : 'Hoàn tất & Gửi kết quả'}
+                  {loading ? 'Đang lưu điểm giáo viên...' : 'Lưu điểm giáo viên'}
                 </button>
               )}
 

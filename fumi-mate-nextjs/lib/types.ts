@@ -94,8 +94,8 @@ export interface Submission {
   aiFeedback?: object;
   teacherScore?: number;
   teacher_score?: number;
-  teacher_feedback?: string;
-  teacherFeedback?: string;
+  teacher_feedback?: string | FeedbackData | Record<string, any>;
+  teacherFeedback?: string | FeedbackData | Record<string, any>;
   attemptCount?: number;
   lateMinutes?: number;
   status: SubmissionStatus;
@@ -173,7 +173,7 @@ export interface CreateSubmissionRequest {
 
 export interface UpdateSubmissionRequest {
   teacher_score?: number;
-  teacher_feedback?: string;
+  teacher_feedback?: string | FeedbackData | Record<string, any>;
 }
 
 export type GradingMethod =

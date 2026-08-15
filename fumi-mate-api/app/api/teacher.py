@@ -99,6 +99,28 @@ def serialize_ai_grading_result(result):
     }
 
 
+def get_latest_valid_ai_result(submission, provider=None):
+    valid_statuses = {'succeeded', 'fallback'}
+    results = [
+        result for result in submission.ai_grading_results
+        if result.status in valid_statuses and result.feedback_json
+    ]
+    if provider:
+        results = [result for result in results if result.provider == provider]
+    if not results:
+        return None
+
+    selected_result = next((result for result in results if result.is_selected), None)
+    if selected_result:
+        return selected_result
+
+    return sorted(
+        results,
+        key=lambda result: (result.created_at or datetime.min, result.id or 0),
+        reverse=True
+    )[0]
+
+
 def make_ai_grading_result(submission_id, provider, feedback_data, latency_ms=None):
     raw_response = feedback_data.pop('_raw_response', None)
     service_latency_ms = feedback_data.pop('_latency_ms', None)
@@ -399,6 +421,10 @@ def get_teacher_submissions():
         for sub in submissions:
             student = User.query.get(sub.student_id)
             task = Task.query.get(sub.task_id)
+            latest_ai_result = get_latest_valid_ai_result(sub, provider='openai') or get_latest_valid_ai_result(sub)
+            list_ai_score = sub.ai_score
+            if list_ai_score is None and latest_ai_result:
+                list_ai_score = latest_ai_result.total_score
             submissions_data.append({
                 'id': sub.id,
                 'student_id': sub.student_id,
@@ -407,7 +433,8 @@ def get_teacher_submissions():
                 'task_title': task.title if task else 'Unknown',
                 'experimental_group': student.experimental_group if student else None,
                 'content': sub.content[:100] + '...' if sub.content and len(sub.content) > 100 else sub.content,
-                'ai_score': sub.ai_score,
+                'ai_score': list_ai_score,
+                'latest_ai_result': serialize_ai_grading_result(latest_ai_result) if latest_ai_result else None,
                 'teacher_score': sub.teacher_score,
                 'status': sub.status,
                 'attemptCount': sub.attempt_count,
@@ -729,8 +756,8 @@ def teacher_ai_grade_submission(submission_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
         student = User.query.get(sub.student_id)
-        if not student or (student.experimental_group or '').strip().lower() != 'variant':
-            return jsonify({'error': 'Chỉ nhóm AI mới được gọi AI chấm điểm.'}), 403
+        if not student:
+            return jsonify({'error': 'Student not found'}), 404
 
         # Choose difficulty fallback
         difficulty = getattr(task, 'difficulty', None) or 'N3'
@@ -830,7 +857,7 @@ def teacher_ai_grade_submission(submission_id):
 @jwt_required()
 @role_required('teacher')
 def publish_ai_grade_submission(submission_id):
-    """Publish selected AI grading result for variant group without teacher manual grading."""
+    """Publish selected AI grading result without teacher manual grading."""
     try:
         user_id = get_current_user_id()
 
@@ -843,8 +870,8 @@ def publish_ai_grade_submission(submission_id):
             return jsonify({'error': 'Not authorized for this task'}), 403
 
         student = User.query.get(sub.student_id)
-        if not student or (student.experimental_group or '').strip().lower() != 'variant':
-            return jsonify({'error': 'Chỉ nhóm AI mới được gửi kết quả AI.'}), 403
+        if not student:
+            return jsonify({'error': 'Student not found'}), 404
 
         body = request.get_json(silent=True) or {}
         selected_result_id = body.get('selected_result_id')

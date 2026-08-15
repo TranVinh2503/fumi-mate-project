@@ -107,6 +107,7 @@ export interface Submission {
   word_file_path?: string;
   word_file_url?: string;
   ai_grading_results?: AIGradingResult[];
+  latest_ai_result?: AIGradingResult | null;
 
 }
 

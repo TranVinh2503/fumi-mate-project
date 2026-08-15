@@ -668,8 +668,6 @@ export default function TeacherGradeSubmissionPage() {
     return <div className="p-10 text-center">Đang tải dữ liệu bài làm...</div>;
   }
 
-  const isVariantGroup = submission.experimental_group?.trim().toLowerCase() === 'variant';
-  const isPreTest = submission.task_title?.trim().toLowerCase() === 'pre-test';
   const hasTeacherManualGrade = Boolean(submission.teacher_score != null || submission.teacher_feedback);
   const hasActualPublishedResult = Boolean(
     submission.ai_score != null ||
@@ -680,11 +678,9 @@ export default function TeacherGradeSubmissionPage() {
   const isGraded = submission.status === 'teacher_graded' && hasActualPublishedResult;
   const hasGradingTask = Boolean(submission.grading_task?.prompt_ja);
   const hasAIResult = Boolean(selectedAiResultId || aiResults.length > 0 || submission.ai_score != null);
-  const canRunAIGrade = isVariantGroup && (!isGraded || (isPreTest && !hasAIResult));
+  const canRunAIGrade = !hasAIResult;
   const canEditManualGrade = !hasTeacherManualGrade;
   const canPublishAIGrade =
-    isVariantGroup &&
-    (!isGraded || isPreTest) &&
     Boolean(selectedAiResultId || submission.ai_score);
 
   return (
@@ -720,23 +716,21 @@ export default function TeacherGradeSubmissionPage() {
             📥 Xuất Word bài làm
           </button>
 
-          {isVariantGroup && (
-            <button
-              type="button"
-              onClick={handleAIGrade}
-              disabled={aiLoading || loading || !canRunAIGrade || !hasGradingTask}
-              title={
-                !hasGradingTask
-                  ? 'Chưa có đề chấm tương ứng với task_type_id'
-                  : isGraded && !isPreTest
-                    ? 'Kết quả bài này đã được gửi'
-                    : undefined
-              }
-              className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 border border-purple-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {aiLoading ? '🤖 Đang AI chấm...' : '🤖 AI chấm điểm'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleAIGrade}
+            disabled={aiLoading || loading || !canRunAIGrade || !hasGradingTask}
+            title={
+              !hasGradingTask
+                ? 'Chưa có đề chấm tương ứng với task_type_id'
+                : hasAIResult
+                  ? 'Bài này đã có kết quả AI'
+                  : undefined
+            }
+            className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 border border-purple-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {aiLoading ? '🤖 Đang AI chấm...' : '🤖 AI chấm điểm'}
+          </button>
 
           {canEditManualGrade ? (
             <label className="px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 cursor-pointer border border-green-100 text-sm">
@@ -894,7 +888,7 @@ export default function TeacherGradeSubmissionPage() {
             </div>
 
             <div className="mt-6 space-y-3 text-left">
-              {isVariantGroup && aiResults.length > 0 && (
+              {aiResults.length > 0 && (
                 <div className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
@@ -1003,14 +997,14 @@ export default function TeacherGradeSubmissionPage() {
                 placeholder="Đánh giá chi tiết sẽ tự động lấy từ mô tả level trong rubric..."
               />
 
-              {isVariantGroup && formData.ai_summary && (
+              {formData.ai_summary && (
                 <div className="p-4 rounded-xl bg-blue-50 text-blue-700 text-sm leading-relaxed">
                   <p className="font-bold mb-2">Nhận xét tổng quan từ AI:</p>
                   <p className="whitespace-pre-wrap">{formData.ai_summary}</p>
                 </div>
               )}
 
-              {isVariantGroup && (
+              {aiFeedback && (
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">
                     Bản gợi ý chỉnh sửa của AI
@@ -1024,7 +1018,7 @@ export default function TeacherGradeSubmissionPage() {
                 </div>
               )}
 
-              {isVariantGroup && aiFeedback?.strengths && Array.isArray(aiFeedback.strengths) && aiFeedback.strengths.length > 0 && (
+              {aiFeedback?.strengths && Array.isArray(aiFeedback.strengths) && aiFeedback.strengths.length > 0 && (
                 <div className="p-4 rounded-xl bg-green-50 text-green-700 text-sm">
                   <p className="font-bold mb-2">Ưu điểm AI nhận xét:</p>
                   <ul className="list-disc list-inside space-y-1">
@@ -1035,7 +1029,7 @@ export default function TeacherGradeSubmissionPage() {
                 </div>
               )}
 
-              {isVariantGroup && aiFeedback?.improvements && Array.isArray(aiFeedback.improvements) && aiFeedback.improvements.length > 0 && (
+              {aiFeedback?.improvements && Array.isArray(aiFeedback.improvements) && aiFeedback.improvements.length > 0 && (
                 <div className="p-4 rounded-xl bg-orange-50 text-orange-700 text-sm">
                   <p className="font-bold mb-2">Điểm cần cải thiện:</p>
                   <ul className="list-disc list-inside space-y-1">
@@ -1070,7 +1064,7 @@ export default function TeacherGradeSubmissionPage() {
                 </button>
               )}
 
-              {isVariantGroup && !isGraded && (
+              {!isGraded && (
                 <button
                   onClick={handlePublishAIGrade}
                   disabled={loading || aiLoading || !canPublishAIGrade}

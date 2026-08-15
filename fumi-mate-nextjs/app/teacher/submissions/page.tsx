@@ -50,8 +50,6 @@ export default function TeacherSubmissionsPage() {
 
   // Hàm Helper để check xem đã chấm hay chưa (tránh lỗi điểm 0 hoặc null)
   const isGraded = (score: number | null | undefined) => score !== null && score !== undefined;
-  const isVariantSubmission = (sub: SubmissionWithDetails) =>
-    sub.experimental_group?.trim().toLowerCase() === 'variant';
   const isPreTestSubmission = (sub: SubmissionWithDetails) =>
     sub.task_title?.trim().toLowerCase() === 'pre-test';
   const hasTeacherGrade = (sub: SubmissionWithDetails) =>
@@ -203,8 +201,7 @@ export default function TeacherSubmissionsPage() {
                   const aiAlreadyGraded = isGraded(sub.ai_score);
                   const legacyPreTestNeedsAIGrade =
                     isPreTestSubmission(sub) && !aiAlreadyGraded;
-                  const canRunAIGrade =
-                    isVariantSubmission(sub) && (!aiAlreadyGraded || legacyPreTestNeedsAIGrade);
+                  const canRunAIGrade = !aiAlreadyGraded || legacyPreTestNeedsAIGrade;
 
                   return (
                   <tr
@@ -261,28 +258,26 @@ export default function TeacherSubmissionsPage() {
                           <Eye className="w-4 h-4" />
                           {teacherGraded ? 'View' : 'Grade'}
                         </button>
-                        {isVariantSubmission(sub) && (
-                          <button
-                            type="button"
-                            onClick={() => sub.id && handleAIGrade(sub.id)}
-                            disabled={!canRunAIGrade || aiGradingId === sub.id}
-                            title={
-                              aiAlreadyGraded && !legacyPreTestNeedsAIGrade
-                                ? 'Bài này đã có điểm AI'
-                                : undefined
-                            }
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {aiGradingId === sub.id ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                AI Grading...
-                              </>
-                            ) : (
-                              '🤖 AI Grade'
-                            )}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => sub.id && handleAIGrade(sub.id)}
+                          disabled={!canRunAIGrade || aiGradingId === sub.id}
+                          title={
+                            aiAlreadyGraded && !legacyPreTestNeedsAIGrade
+                              ? 'Bài này đã có điểm AI'
+                              : undefined
+                          }
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {aiGradingId === sub.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              AI Grading...
+                            </>
+                          ) : (
+                            '🤖 AI Grade'
+                          )}
+                        </button>
                       </div>
                     </td>
 
